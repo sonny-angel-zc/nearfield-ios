@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Social Beating</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 300;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .my-note {
+            font-size: 4rem;
+            font-weight: 200;
+            color: #4a9eff;
+            margin: 20px 0 10px;
+            text-align: center;
+        }
+
+        .my-freq {
+            font-family: monospace;
+            font-size: 1.5rem;
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .play-button {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #1a1a24, #12121a);
+            border: 2px solid #2a2a3a;
+            color: #4a9eff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+        }
+
+        .play-button.playing {
+            background: linear-gradient(145deg, #4a9eff, #3a7ecc);
+            color: #fff;
+            border-color: #4a9eff;
+            box-shadow: 0 0 40px rgba(74, 158, 255, 0.3);
+        }
+
+        .note-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .note-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            background: #1a1a24;
+            border: 1px solid #2a2a3a;
+            color: #888;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .note-btn.selected {
+            background: #4a9eff;
+            border-color: #4a9eff;
+            color: #fff;
+        }
+
+        /* Proximity Display */
+        .proximity-section {
+            background: #12121a;
+            border: 1px solid #2a2a3a;
+            border-radius: 16px;
+            padding: 24px;
+            margin-top: 30px;
+        }
+
+        .proximity-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .proximity-title {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .proximity-distance {
+            font-family: monospace;
+            font-size: 3rem;
+            font-weight: 200;
+            color: #50c878;
+            margin: 10px 0;
+        }
+
+        .proximity-peers {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        .proximity-visual {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+
+        .proximity-rings {
+            width: 120px;
+            height: 120px;
+            position: relative;
+        }
+
+        .proximity-ring {
+            position: absolute;
+            border: 2px solid #2a2a3a;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s;
+        }
+
+        .proximity-ring.ring-1 { width: 30px; height: 30px; }
+        .proximity-ring.ring-2 { width: 60px; height: 60px; }
+        .proximity-ring.ring-3 { width: 90px; height: 90px; }
+        .proximity-ring.ring-4 { width: 120px; height: 120px; }
+
+        .proximity-ring.active {
+            border-color: #50c878;
+            box-shadow: 0 0 15px rgba(80, 200, 120, 0.4);
+        }
+
+        .proximity-center {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4a9eff;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .info-box {
+            background: #12121a;
+            border: 1px solid #2a2a3a;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Social Beating</h1>
+        <p class="subtitle">UWB-powered proximity sound</p>
+
+        <div class="my-note" id="myNote">A4</div>
+        <div class="my-freq" id="myFreq">440.0 Hz</div>
+
+        <button class="play-button" id="playButton">
+            TAP TO<br>PLAY
+        </button>
+
+        <div class="note-selector" id="noteSelector"></div>
+
+        <div class="proximity-section">
+            <div class="proximity-header">
+                <div class="proximity-title">Nearest Device</div>
+                <div class="proximity-distance" id="proximityDistance">--</div>
+                <div class="proximity-peers" id="proximityPeers">No devices nearby</div>
+            </div>
+            <div class="proximity-visual">
+                <div class="proximity-rings">
+                    <div class="proximity-ring ring-4"></div>
+                    <div class="proximity-ring ring-3"></div>
+                    <div class="proximity-ring ring-2"></div>
+                    <div class="proximity-ring ring-1"></div>
+                    <div class="proximity-center"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-box">
+            Uses Apple's Ultra-Wideband for centimeter-accurate proximity.
+            Get closer to unlock richer harmonics!
+        </div>
+    </div>
+
+    <script>
+        // Audio Context
+        let audioCtx = null;
+
+        // Pentatonic scale
+        const notes = {
+            'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63,
+            'G4': 392.00, 'A4': 440.00, 'C5': 523.25, 'D5': 587.33
+        };
+
+        // State
+        let phoneOsc = null;
+        let phoneGain = null;
+        let isPlaying = false;
+        let currentNote = 'A4';
+        let currentDetune = 0;
+
+        // Harmonic oscillators
+        let harmonicOscs = [];
+        let harmonicGains = [];
+
+        // Proximity state (updated by native)
+        let proximityDistance = -1;
+        let proximityPeerCount = 0;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Called by native Swift code
+        function updateNativeProximity(distance, peerCount) {
+            proximityDistance = distance;
+            proximityPeerCount = peerCount;
+            updateProximityUI();
+            updateHarmonics();
+        }
+
+        function updateProximityUI() {
+            const distEl = document.getElementById('proximityDistance');
+            const peersEl = document.getElementById('proximityPeers');
+            const rings = document.querySelectorAll('.proximity-ring');
+
+            if (proximityDistance < 0 || proximityPeerCount === 0) {
+                distEl.textContent = '--';
+                peersEl.textContent = 'No devices nearby';
+                rings.forEach(r => r.classList.remove('active'));
+                return;
+            }
+
+            // Display distance
+            if (proximityDistance < 1) {
+                distEl.textContent = (proximityDistance * 100).toFixed(0) + ' cm';
+            } else {
+                distEl.textContent = proximityDistance.toFixed(1) + ' m';
+            }
+
+            peersEl.textContent = proximityPeerCount + ' device' + (proximityPeerCount > 1 ? 's' : '') + ' nearby';
+
+            // Update rings based on distance
+            // ring-1 = very close (<0.3m), ring-4 = far (<2m)
+            const thresholds = [0.3, 0.6, 1.0, 2.0];
+            rings.forEach((ring, i) => {
+                const threshold = thresholds[3 - i];
+                ring.classList.toggle('active', proximityDistance <= threshold);
+            });
+        }
+
+        function setupHarmonics() {
+            const harmonicRatios = [2, 1.5, 1.25];
+
+            harmonicRatios.forEach((ratio, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = notes[currentNote] * ratio;
+                gain.gain.value = 0;
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+
+                harmonicOscs.push(osc);
+                harmonicGains.push(gain);
+            });
+        }
+
+        function stopHarmonics() {
+            harmonicOscs.forEach(osc => {
+                try { osc.stop(); } catch(e) {}
+            });
+            harmonicOscs = [];
+            harmonicGains = [];
+        }
+
+        function updateHarmonics() {
+            if (!isPlaying || harmonicGains.length === 0) return;
+
+            // Update frequencies
+            harmonicOscs.forEach((osc, i) => {
+                const ratios = [2, 1.5, 1.25];
+                osc.frequency.value = notes[currentNote] * ratios[i];
+            });
+
+            // Map distance to harmonic intensity
+            // Closer = more harmonics (inverse relationship)
+            if (proximityDistance < 0 || proximityDistance > 2) {
+                harmonicGains.forEach(g => g.gain.value = 0);
+                return;
+            }
+
+            // 0m = full harmonics, 2m = no harmonics
+            const proximityLevel = 1 - (proximityDistance / 2);
+            const maxHarmonicGain = 0.2;
+
+            harmonicGains.forEach((gain, i) => {
+                const threshold = (i + 1) * 0.25;
+                const level = Math.max(0, (proximityLevel - threshold) / (1 - threshold));
+                gain.gain.value = level * maxHarmonicGain;
+            });
+        }
+
+        function togglePlay() {
+            initAudio();
+            const btn = document.getElementById('playButton');
+
+            if (isPlaying) {
+                if (phoneGain) {
+                    phoneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                }
+                setTimeout(() => {
+                    if (phoneOsc) {
+                        phoneOsc.stop();
+                        phoneOsc = null;
+                    }
+                }, 300);
+                stopHarmonics();
+                isPlaying = false;
+                btn.classList.remove('playing');
+                btn.innerHTML = 'TAP TO<br>PLAY';
+            } else {
+                phoneOsc = audioCtx.createOscillator();
+                phoneGain = audioCtx.createGain();
+
+                phoneOsc.type = 'sine';
+                phoneOsc.frequency.value = notes[currentNote];
+                phoneGain.gain.value = 1.0;
+
+                phoneOsc.connect(phoneGain);
+                phoneGain.connect(audioCtx.destination);
+                phoneOsc.start();
+
+                setupHarmonics();
+
+                isPlaying = true;
+                btn.classList.add('playing');
+                btn.innerHTML = 'PLAYING<br>...';
+            }
+        }
+
+        function updateDisplay() {
+            document.getElementById('myNote').textContent = currentNote;
+            document.getElementById('myFreq').textContent = notes[currentNote].toFixed(1) + ' Hz';
+        }
+
+        function init() {
+            // Note selector
+            const selector = document.getElementById('noteSelector');
+            selector.innerHTML = Object.keys(notes).map(note => `
+                <button class="note-btn ${note === currentNote ? 'selected' : ''}" data-note="${note}">${note}</button>
+            `).join('');
+
+            selector.querySelectorAll('.note-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentNote = btn.dataset.note;
+                    selector.querySelectorAll('.note-btn').forEach(b => b.classList.remove('selected'));
+                    btn.classList.add('selected');
+                    updateDisplay();
+                    if (phoneOsc) {
+                        phoneOsc.frequency.value = notes[currentNote];
+                    }
+                    updateHarmonics();
+                });
+            });
+
+            document.getElementById('playButton').addEventListener('click', togglePlay);
+            updateDisplay();
+        }
+
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
