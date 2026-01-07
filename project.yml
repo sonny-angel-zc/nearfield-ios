@@ -1,0 +1,49 @@
+name: SocialBeating
+options:
+  bundleIdPrefix: com.socialbeating
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15.0"
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  SocialBeating:
+    type: application
+    platform: iOS
+    sources:
+      - path: SocialBeating/SocialBeating
+        excludes:
+          - "*.plist"
+    settings:
+      base:
+        INFOPLIST_FILE: SocialBeating/SocialBeating/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.socialbeating.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.0"
+        ENABLE_PREVIEWS: true
+    info:
+      path: SocialBeating/SocialBeating/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Nearby Interaction (UWB)
+        NSNearbyInteractionAllowOnceUsageDescription: "This app uses Nearby Interaction to detect the distance to other phones for the sound installation."
+        NSNearbyInteractionUsageDescription: "This app uses Nearby Interaction to detect the distance to other phones for the sound installation."
+        # Multipeer Connectivity
+        NSLocalNetworkUsageDescription: "This app uses local network to find other Social Beating devices nearby."
+        NSBonjourServices:
+          - "_social-beat._tcp"
+          - "_social-beat._udp"
+        # Bluetooth
+        NSBluetoothAlwaysUsageDescription: "Bluetooth is used to discover nearby devices for the sound installation."
+        NSBluetoothPeripheralUsageDescription: "Bluetooth is used to discover nearby devices for the sound installation."
+        # Background Modes
+        UIBackgroundModes:
+          - audio
+          - nearby-interaction

@@ -17,84 +17,193 @@
             color: #e0e0e0;
             min-height: 100vh;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            overflow: hidden;
         }
 
         .container {
             max-width: 600px;
             margin: 0 auto;
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
         }
 
         h1 {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: 300;
             text-align: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             color: #fff;
         }
 
         .subtitle {
             text-align: center;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: #666;
-            margin-bottom: 30px;
+            margin-bottom: 15px;
+        }
+
+        /* 3D Sphere Container */
+        .sphere-container {
+            width: 280px;
+            height: 280px;
+            position: relative;
+            margin: 10px 0;
+        }
+
+        .sphere-canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #1a1a24, #0a0a0f);
+            box-shadow:
+                inset 0 0 60px rgba(74, 158, 255, 0.1),
+                0 0 40px rgba(74, 158, 255, 0.05);
+        }
+
+        /* Center dot (you) */
+        .center-marker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 16px;
+            height: 16px;
+            background: #4a9eff;
+            border-radius: 50%;
+            box-shadow: 0 0 20px rgba(74, 158, 255, 0.6);
+            z-index: 10;
+        }
+
+        /* Distance rings */
+        .distance-ring {
+            position: absolute;
+            border: 1px solid rgba(74, 158, 255, 0.15);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .distance-ring.ring-1 { width: 33%; height: 33%; }
+        .distance-ring.ring-2 { width: 66%; height: 66%; }
+        .distance-ring.ring-3 { width: 100%; height: 100%; }
+
+        /* Peer dots */
+        .peer-dot {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            background: #50c878;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px rgba(80, 200, 120, 0.6);
+            transition: all 0.15s ease-out;
+            z-index: 5;
+        }
+
+        .peer-dot.close {
+            background: #ff6b6b;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Info display */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 280px;
+            margin: 15px 0;
+            font-family: monospace;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 0.75rem;
+        }
+
+        .info-value {
+            color: #50c878;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .info-value.no-peer {
+            color: #666;
+        }
+
+        /* Note display */
+        .note-display {
+            text-align: center;
+            margin: 10px 0;
         }
 
         .my-note {
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: 200;
             color: #4a9eff;
-            margin: 20px 0 10px;
-            text-align: center;
         }
 
         .my-freq {
             font-family: monospace;
-            font-size: 1.5rem;
+            font-size: 1rem;
             color: #666;
-            margin-bottom: 30px;
-            text-align: center;
         }
 
+        .detune-indicator {
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #ff9500;
+            height: 1.2em;
+        }
+
+        /* Play button */
         .play-button {
-            width: 150px;
-            height: 150px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             background: linear-gradient(145deg, #1a1a24, #12121a);
             border: 2px solid #2a2a3a;
             color: #4a9eff;
-            font-size: 1.2rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 30px;
+            margin: 15px 0;
         }
 
         .play-button.playing {
             background: linear-gradient(145deg, #4a9eff, #3a7ecc);
             color: #fff;
             border-color: #4a9eff;
-            box-shadow: 0 0 40px rgba(74, 158, 255, 0.3);
+            box-shadow: 0 0 30px rgba(74, 158, 255, 0.4);
         }
 
+        /* Note selector */
         .note-selector {
             display: flex;
-            gap: 8px;
+            gap: 6px;
             flex-wrap: wrap;
             justify-content: center;
-            margin: 20px 0;
+            margin: 10px 0;
+            max-width: 320px;
         }
 
         .note-btn {
-            width: 50px;
-            height: 50px;
-            border-radius: 10px;
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
             background: #1a1a24;
             border: 1px solid #2a2a3a;
             color: #888;
-            font-size: 1rem;
+            font-size: 0.85rem;
             cursor: pointer;
         }
 
@@ -104,89 +213,12 @@
             color: #fff;
         }
 
-        /* Proximity Display */
-        .proximity-section {
-            background: #12121a;
-            border: 1px solid #2a2a3a;
-            border-radius: 16px;
-            padding: 24px;
-            margin-top: 30px;
-        }
-
-        .proximity-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .proximity-title {
-            font-size: 0.9rem;
-            color: #888;
-        }
-
-        .proximity-distance {
-            font-family: monospace;
-            font-size: 3rem;
-            font-weight: 200;
-            color: #50c878;
-            margin: 10px 0;
-        }
-
-        .proximity-peers {
-            font-size: 0.85rem;
-            color: #666;
-        }
-
-        .proximity-visual {
-            display: flex;
-            justify-content: center;
-            margin: 20px 0;
-        }
-
-        .proximity-rings {
-            width: 120px;
-            height: 120px;
-            position: relative;
-        }
-
-        .proximity-ring {
-            position: absolute;
-            border: 2px solid #2a2a3a;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            transition: all 0.3s;
-        }
-
-        .proximity-ring.ring-1 { width: 30px; height: 30px; }
-        .proximity-ring.ring-2 { width: 60px; height: 60px; }
-        .proximity-ring.ring-3 { width: 90px; height: 90px; }
-        .proximity-ring.ring-4 { width: 120px; height: 120px; }
-
-        .proximity-ring.active {
-            border-color: #50c878;
-            box-shadow: 0 0 15px rgba(80, 200, 120, 0.4);
-        }
-
-        .proximity-center {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: #4a9eff;
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .info-box {
-            background: #12121a;
-            border: 1px solid #2a2a3a;
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 20px;
-            font-size: 0.85rem;
-            color: #666;
+        /* Status */
+        .status-bar {
+            font-size: 0.7rem;
+            color: #444;
+            margin-top: auto;
+            padding: 10px;
             text-align: center;
         }
     </style>
@@ -194,10 +226,33 @@
 <body>
     <div class="container">
         <h1>Social Beating</h1>
-        <p class="subtitle">UWB-powered proximity sound</p>
+        <p class="subtitle">Tilt to detune / Get closer for harmonics</p>
 
-        <div class="my-note" id="myNote">A4</div>
-        <div class="my-freq" id="myFreq">440.0 Hz</div>
+        <div class="sphere-container">
+            <canvas class="sphere-canvas" id="sphereCanvas"></canvas>
+            <div class="distance-ring ring-3"></div>
+            <div class="distance-ring ring-2"></div>
+            <div class="distance-ring ring-1"></div>
+            <div class="center-marker"></div>
+            <div id="peerDotsContainer"></div>
+        </div>
+
+        <div class="info-row">
+            <div>
+                <div class="info-label">NEAREST</div>
+                <div class="info-value" id="distanceValue">--</div>
+            </div>
+            <div style="text-align: right;">
+                <div class="info-label">PEERS</div>
+                <div class="info-value" id="peerCount">0</div>
+            </div>
+        </div>
+
+        <div class="note-display">
+            <div class="my-note" id="myNote">A4</div>
+            <div class="my-freq" id="myFreq">440.0 Hz</div>
+            <div class="detune-indicator" id="detuneIndicator"></div>
+        </div>
 
         <button class="play-button" id="playButton">
             TAP TO<br>PLAY
@@ -205,27 +260,7 @@
 
         <div class="note-selector" id="noteSelector"></div>
 
-        <div class="proximity-section">
-            <div class="proximity-header">
-                <div class="proximity-title">Nearest Device</div>
-                <div class="proximity-distance" id="proximityDistance">--</div>
-                <div class="proximity-peers" id="proximityPeers">No devices nearby</div>
-            </div>
-            <div class="proximity-visual">
-                <div class="proximity-rings">
-                    <div class="proximity-ring ring-4"></div>
-                    <div class="proximity-ring ring-3"></div>
-                    <div class="proximity-ring ring-2"></div>
-                    <div class="proximity-ring ring-1"></div>
-                    <div class="proximity-center"></div>
-                </div>
-            </div>
-        </div>
-
-        <div class="info-box">
-            Uses Apple's Ultra-Wideband for centimeter-accurate proximity.
-            Get closer to unlock richer harmonics!
-        </div>
+        <div class="status-bar" id="statusBar">Searching for nearby devices...</div>
     </div>
 
     <script>
@@ -243,15 +278,27 @@
         let phoneGain = null;
         let isPlaying = false;
         let currentNote = 'A4';
-        let currentDetune = 0;
 
         // Harmonic oscillators
         let harmonicOscs = [];
         let harmonicGains = [];
 
-        // Proximity state (updated by native)
-        let proximityDistance = -1;
-        let proximityPeerCount = 0;
+        // Data from native
+        let nativeData = {
+            nearestDistance: -1,
+            peerCount: 0,
+            peers: {},
+            tiltX: 0,
+            tiltY: 0
+        };
+
+        // Detune settings
+        const maxDetuneCents = 50;  // Max detune in cents
+        let currentDetune = 0;
+
+        // Sphere canvas
+        let sphereCanvas, sphereCtx;
+        const sphereRadius = 130;
 
         function initAudio() {
             if (!audioCtx) {
@@ -264,40 +311,116 @@
 
         // Called by native Swift code
         function updateNativeProximity(distance, peerCount) {
-            proximityDistance = distance;
-            proximityPeerCount = peerCount;
-            updateProximityUI();
+            // Legacy support
+            nativeData.nearestDistance = distance;
+            nativeData.peerCount = peerCount;
+            updateUI();
+        }
+
+        // New unified data handler
+        function updateNativeData(data) {
+            nativeData = { ...nativeData, ...data };
+            updateUI();
+            updateTiltDetune();
+        }
+
+        function updateUI() {
+            // Update distance display
+            const distEl = document.getElementById('distanceValue');
+            const peerEl = document.getElementById('peerCount');
+            const statusBar = document.getElementById('statusBar');
+
+            if (nativeData.nearestDistance < 0 || nativeData.peerCount === 0) {
+                distEl.textContent = '--';
+                distEl.classList.add('no-peer');
+                peerEl.textContent = '0';
+                statusBar.textContent = 'Searching for nearby devices...';
+            } else {
+                distEl.classList.remove('no-peer');
+                if (nativeData.nearestDistance < 1) {
+                    distEl.textContent = (nativeData.nearestDistance * 100).toFixed(0) + ' cm';
+                } else {
+                    distEl.textContent = nativeData.nearestDistance.toFixed(2) + ' m';
+                }
+                peerEl.textContent = nativeData.peerCount;
+                statusBar.textContent = nativeData.peerCount + ' device' + (nativeData.peerCount > 1 ? 's' : '') + ' connected';
+            }
+
+            // Update peer dots on sphere
+            renderPeerDots();
+
+            // Update harmonics
             updateHarmonics();
         }
 
-        function updateProximityUI() {
-            const distEl = document.getElementById('proximityDistance');
-            const peersEl = document.getElementById('proximityPeers');
-            const rings = document.querySelectorAll('.proximity-ring');
+        function renderPeerDots() {
+            const container = document.getElementById('peerDotsContainer');
+            container.innerHTML = '';
 
-            if (proximityDistance < 0 || proximityPeerCount === 0) {
-                distEl.textContent = '--';
-                peersEl.textContent = 'No devices nearby';
-                rings.forEach(r => r.classList.remove('active'));
-                return;
+            const peers = nativeData.peers || {};
+            const sphereContainer = document.querySelector('.sphere-container');
+            const centerX = sphereContainer.offsetWidth / 2;
+            const centerY = sphereContainer.offsetHeight / 2;
+            const maxRadius = (sphereContainer.offsetWidth / 2) - 15;
+
+            for (const [name, peer] of Object.entries(peers)) {
+                if (!peer || peer.distance < 0) continue;
+
+                const dot = document.createElement('div');
+                dot.className = 'peer-dot';
+
+                // Calculate position from direction vector
+                let x = centerX;
+                let y = centerY;
+
+                if (peer.directionX !== undefined && peer.directionZ !== undefined) {
+                    // Use direction vector (X and Z for horizontal plane)
+                    // Normalize and scale by distance (closer = closer to center)
+                    const distanceScale = Math.min(peer.distance / 3, 1);  // 3m = edge
+                    const dirMagnitude = Math.sqrt(peer.directionX ** 2 + peer.directionZ ** 2) || 1;
+
+                    x = centerX + (peer.directionX / dirMagnitude) * maxRadius * distanceScale;
+                    y = centerY - (peer.directionZ / dirMagnitude) * maxRadius * distanceScale;
+                } else if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
+                    // Fallback to horizontal angle
+                    const angle = peer.horizontalAngle;
+                    const distanceScale = Math.min(peer.distance / 3, 1);
+                    x = centerX + Math.sin(angle) * maxRadius * distanceScale;
+                    y = centerY - Math.cos(angle) * maxRadius * distanceScale;
+                }
+
+                // Mark as close if within 0.5m
+                if (peer.distance < 0.5) {
+                    dot.classList.add('close');
+                }
+
+                dot.style.left = x + 'px';
+                dot.style.top = y + 'px';
+                dot.title = name + ': ' + peer.distance.toFixed(2) + 'm';
+
+                container.appendChild(dot);
             }
+        }
 
-            // Display distance
-            if (proximityDistance < 1) {
-                distEl.textContent = (proximityDistance * 100).toFixed(0) + ' cm';
+        function updateTiltDetune() {
+            if (!isPlaying || !phoneOsc) return;
+
+            // Map tilt to detune (-maxDetuneCents to +maxDetuneCents)
+            // tiltX (roll) controls detune
+            const tiltX = nativeData.tiltX || 0;
+            const normalizedTilt = Math.max(-1, Math.min(1, tiltX / 0.5));  // ±0.5 rad = full detune
+            currentDetune = normalizedTilt * maxDetuneCents;
+
+            // Apply detune to oscillator
+            phoneOsc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
+
+            // Update display
+            const detuneEl = document.getElementById('detuneIndicator');
+            if (Math.abs(currentDetune) > 1) {
+                detuneEl.textContent = (currentDetune > 0 ? '+' : '') + currentDetune.toFixed(0) + ' cents';
             } else {
-                distEl.textContent = proximityDistance.toFixed(1) + ' m';
+                detuneEl.textContent = '';
             }
-
-            peersEl.textContent = proximityPeerCount + ' device' + (proximityPeerCount > 1 ? 's' : '') + ' nearby';
-
-            // Update rings based on distance
-            // ring-1 = very close (<0.3m), ring-4 = far (<2m)
-            const thresholds = [0.3, 0.6, 1.0, 2.0];
-            rings.forEach((ring, i) => {
-                const threshold = thresholds[3 - i];
-                ring.classList.toggle('active', proximityDistance <= threshold);
-            });
         }
 
         function setupHarmonics() {
@@ -331,27 +454,27 @@
         function updateHarmonics() {
             if (!isPlaying || harmonicGains.length === 0) return;
 
-            // Update frequencies
+            // Update harmonic frequencies
             harmonicOscs.forEach((osc, i) => {
                 const ratios = [2, 1.5, 1.25];
                 osc.frequency.value = notes[currentNote] * ratios[i];
             });
 
             // Map distance to harmonic intensity
-            // Closer = more harmonics (inverse relationship)
-            if (proximityDistance < 0 || proximityDistance > 2) {
-                harmonicGains.forEach(g => g.gain.value = 0);
+            const distance = nativeData.nearestDistance;
+            if (distance < 0 || distance > 2) {
+                harmonicGains.forEach(g => g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1));
                 return;
             }
 
             // 0m = full harmonics, 2m = no harmonics
-            const proximityLevel = 1 - (proximityDistance / 2);
-            const maxHarmonicGain = 0.2;
+            const proximityLevel = 1 - (distance / 2);
+            const maxHarmonicGain = 0.25;
 
             harmonicGains.forEach((gain, i) => {
                 const threshold = (i + 1) * 0.25;
                 const level = Math.max(0, (proximityLevel - threshold) / (1 - threshold));
-                gain.gain.value = level * maxHarmonicGain;
+                gain.gain.setTargetAtTime(level * maxHarmonicGain, audioCtx.currentTime, 0.1);
             });
         }
 
@@ -373,13 +496,14 @@
                 isPlaying = false;
                 btn.classList.remove('playing');
                 btn.innerHTML = 'TAP TO<br>PLAY';
+                document.getElementById('detuneIndicator').textContent = '';
             } else {
                 phoneOsc = audioCtx.createOscillator();
                 phoneGain = audioCtx.createGain();
 
                 phoneOsc.type = 'sine';
                 phoneOsc.frequency.value = notes[currentNote];
-                phoneGain.gain.value = 1.0;
+                phoneGain.gain.value = 0.8;
 
                 phoneOsc.connect(phoneGain);
                 phoneGain.connect(audioCtx.destination);
@@ -389,13 +513,54 @@
 
                 isPlaying = true;
                 btn.classList.add('playing');
-                btn.innerHTML = 'PLAYING<br>...';
+                btn.innerHTML = 'PLAYING';
             }
         }
 
         function updateDisplay() {
             document.getElementById('myNote').textContent = currentNote;
             document.getElementById('myFreq').textContent = notes[currentNote].toFixed(1) + ' Hz';
+        }
+
+        function initSphereCanvas() {
+            sphereCanvas = document.getElementById('sphereCanvas');
+            sphereCtx = sphereCanvas.getContext('2d');
+
+            // Set canvas size for retina
+            const dpr = window.devicePixelRatio || 1;
+            const rect = sphereCanvas.getBoundingClientRect();
+            sphereCanvas.width = rect.width * dpr;
+            sphereCanvas.height = rect.height * dpr;
+            sphereCtx.scale(dpr, dpr);
+
+            drawSphereBackground();
+        }
+
+        function drawSphereBackground() {
+            if (!sphereCtx) return;
+
+            const w = sphereCanvas.width / (window.devicePixelRatio || 1);
+            const h = sphereCanvas.height / (window.devicePixelRatio || 1);
+            const cx = w / 2;
+            const cy = h / 2;
+
+            sphereCtx.clearRect(0, 0, w, h);
+
+            // Draw subtle grid lines
+            sphereCtx.strokeStyle = 'rgba(74, 158, 255, 0.08)';
+            sphereCtx.lineWidth = 1;
+
+            // Horizontal line
+            sphereCtx.beginPath();
+            sphereCtx.moveTo(10, cy);
+            sphereCtx.lineTo(w - 10, cy);
+            sphereCtx.stroke();
+
+            // Vertical line
+            sphereCtx.beginPath();
+            sphereCtx.moveTo(cx, 10);
+            sphereCtx.lineTo(cx, h - 10);
+            sphereCtx.stroke();
         }
 
         function init() {
@@ -412,7 +577,7 @@
                     btn.classList.add('selected');
                     updateDisplay();
                     if (phoneOsc) {
-                        phoneOsc.frequency.value = notes[currentNote];
+                        phoneOsc.frequency.setTargetAtTime(notes[currentNote], audioCtx.currentTime, 0.05);
                     }
                     updateHarmonics();
                 });
@@ -420,6 +585,37 @@
 
             document.getElementById('playButton').addEventListener('click', togglePlay);
             updateDisplay();
+            initSphereCanvas();
+
+            // Demo: simulate peer for testing in browser
+            // Uncomment to test UI without native
+            /*
+            setInterval(() => {
+                const angle = Date.now() / 2000;
+                updateNativeData({
+                    nearestDistance: 1.5 + Math.sin(Date.now() / 1000) * 0.5,
+                    peerCount: 2,
+                    peers: {
+                        'iPhone-1': {
+                            distance: 1.5,
+                            directionX: Math.sin(angle),
+                            directionY: 0,
+                            directionZ: Math.cos(angle),
+                            horizontalAngle: angle
+                        },
+                        'iPhone-2': {
+                            distance: 2.2,
+                            directionX: Math.sin(angle + Math.PI),
+                            directionY: 0,
+                            directionZ: Math.cos(angle + Math.PI),
+                            horizontalAngle: angle + Math.PI
+                        }
+                    },
+                    tiltX: Math.sin(Date.now() / 500) * 0.3,
+                    tiltY: 0
+                });
+            }, 50);
+            */
         }
 
         window.addEventListener('load', init);

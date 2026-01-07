@@ -2,6 +2,7 @@ import SwiftUI
 import WebKit
 import NearbyInteraction
 import MultipeerConnectivity
+import CoreMotion
 
 struct ContentView: View {
     @StateObject private var proximityManager = ProximityManager()
@@ -19,6 +20,15 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Peer Data with Direction
+struct PeerData: Codable {
+    var distance: Float
+    var directionX: Float
+    var directionY: Float
+    var directionZ: Float
+    var horizontalAngle: Float
+}
+
 // MARK: - WebView Container
 struct WebViewContainer: UIViewRepresentable {
     @ObservedObject var proximityManager: ProximityManager
@@ -28,7 +38,6 @@ struct WebViewContainer: UIViewRepresentable {
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
 
-        // Add message handler for web -> native communication
         config.userContentController.add(context.coordinator, name: "nativeHandler")
 
         let webView = WKWebView(frame: .zero, configuration: config)
@@ -36,7 +45,6 @@ struct WebViewContainer: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
 
-        // Load the bundled HTML
         if let htmlPath = Bundle.main.path(forResource: "social_beating", ofType: "html") {
             let htmlUrl = URL(fileURLWithPath: htmlPath)
             webView.loadFileURL(htmlUrl, allowingReadAccessTo: htmlUrl.deletingLastPathComponent())
@@ -47,8 +55,25 @@ struct WebViewContainer: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        // Push proximity data to web whenever it changes
-        let js = "updateNativeProximity(\(proximityManager.nearestDistance), \(proximityManager.peerCount));"
+        // Convert peers dictionary to JSON
+        let peersJSON: String
+        if let jsonData = try? JSONEncoder().encode(proximityManager.peersData),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            peersJSON = jsonString
+        } else {
+            peersJSON = "{}"
+        }
+
+        // Pass all data including tilt
+        let js = """
+        updateNativeData({
+            nearestDistance: \(proximityManager.nearestDistance),
+            peerCount: \(proximityManager.peerCount),
+            peers: \(peersJSON),
+            tiltX: \(proximityManager.tiltX),
+            tiltY: \(proximityManager.tiltY)
+        });
+        """
         webView.evaluateJavaScript(js, completionHandler: nil)
     }
 
@@ -65,7 +90,6 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            // Handle messages from web if needed
             if let body = message.body as? [String: Any] {
                 print("Message from web: \(body)")
             }
@@ -73,11 +97,15 @@ struct WebViewContainer: UIViewRepresentable {
     }
 }
 
-// MARK: - Proximity Manager using Nearby Interaction + Multipeer
+// MARK: - Proximity Manager with Direction + Tilt
 class ProximityManager: NSObject, ObservableObject {
-    @Published var nearestDistance: Float = -1  // -1 = no peer detected
+    @Published var nearestDistance: Float = -1
     @Published var peerCount: Int = 0
-    @Published var peers: [String: Float] = [:]  // peerID -> distance
+    @Published var peersData: [String: PeerData] = [:]
+
+    // Tilt data for detune
+    @Published var tiltX: Float = 0
+    @Published var tiltY: Float = 0
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -85,9 +113,13 @@ class ProximityManager: NSObject, ObservableObject {
     private var mcBrowser: MCNearbyServiceBrowser?
     private var peerID: MCPeerID!
 
-    private let serviceType = "social-beating"
+    private let serviceType = "social-beat"  // Max 15 chars for Bonjour
 
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
+    private var tokenToPeer: [Data: MCPeerID] = [:]  // Map token data to peer
+
+    // Motion manager for tilt
+    private let motionManager = CMMotionManager()
 
     override init() {
         super.init()
@@ -95,21 +127,19 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     func start() {
-        // Check if device supports Nearby Interaction
+        startMotionUpdates()
+
         guard NISession.isSupported else {
             print("Nearby Interaction not supported on this device")
             return
         }
 
-        // Start NI session
         niSession = NISession()
         niSession?.delegate = self
 
-        // Start Multipeer for discovery token exchange
         mcSession = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
         mcSession?.delegate = self
 
-        // Advertise and browse simultaneously
         mcAdvertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: serviceType)
         mcAdvertiser?.delegate = self
         mcAdvertiser?.startAdvertisingPeer()
@@ -121,7 +151,25 @@ class ProximityManager: NSObject, ObservableObject {
         print("Proximity manager started")
     }
 
+    private func startMotionUpdates() {
+        guard motionManager.isDeviceMotionAvailable else {
+            print("Device motion not available")
+            return
+        }
+
+        motionManager.deviceMotionUpdateInterval = 1.0 / 30.0  // 30 Hz
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+            guard let motion = motion, let self = self else { return }
+
+            // Get device attitude (tilt)
+            // Roll: side-to-side tilt, Pitch: forward-back tilt
+            self.tiltX = Float(motion.attitude.roll)   // -π to π
+            self.tiltY = Float(motion.attitude.pitch)  // -π/2 to π/2
+        }
+    }
+
     func stop() {
+        motionManager.stopDeviceMotionUpdates()
         niSession?.invalidate()
         mcAdvertiser?.stopAdvertisingPeer()
         mcBrowser?.stopBrowsingForPeers()
@@ -141,12 +189,12 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     private func updateNearestDistance() {
-        if peers.isEmpty {
+        if peersData.isEmpty {
             nearestDistance = -1
             peerCount = 0
         } else {
-            nearestDistance = peers.values.min() ?? -1
-            peerCount = peers.count
+            nearestDistance = peersData.values.map { $0.distance }.min() ?? -1
+            peerCount = peersData.count
         }
     }
 }
@@ -155,25 +203,51 @@ class ProximityManager: NSObject, ObservableObject {
 extension ProximityManager: NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         for object in nearbyObjects {
-            if let distance = object.distance {
-                // Find which peer this token belongs to
-                for (peerID, token) in peerTokens {
-                    // Note: In production, you'd need to match tokens properly
-                    // This is simplified for the prototype
-                    peers[peerID.displayName] = distance
+            // Find which peer this object belongs to
+            for (peer, token) in peerTokens {
+                // Match by comparing discovery tokens
+                if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
+                   let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
+                   tokenData == objectTokenData {
+
+                    let distance = object.distance ?? -1
+                    let direction = object.direction ?? simd_float3(0, 0, 0)
+
+                    // Get horizontal angle if available (iOS 16+)
+                    var horizontalAngle: Float = 0
+                    if #available(iOS 16.0, *) {
+                        horizontalAngle = object.horizontalAngle ?? 0
+                    }
+
+                    DispatchQueue.main.async {
+                        self.peersData[peer.displayName] = PeerData(
+                            distance: distance,
+                            directionX: direction.x,
+                            directionY: direction.y,
+                            directionZ: direction.z,
+                            horizontalAngle: horizontalAngle
+                        )
+                        self.updateNearestDistance()
+                    }
+                    break
                 }
             }
-        }
-
-        DispatchQueue.main.async {
-            self.updateNearestDistance()
         }
     }
 
     func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
-        // Handle peer removal
-        DispatchQueue.main.async {
-            self.updateNearestDistance()
+        for object in nearbyObjects {
+            for (peer, token) in peerTokens {
+                if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
+                   let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
+                   tokenData == objectTokenData {
+                    DispatchQueue.main.async {
+                        self.peersData.removeValue(forKey: peer.displayName)
+                        self.updateNearestDistance()
+                    }
+                    break
+                }
+            }
         }
     }
 
@@ -183,7 +257,6 @@ extension ProximityManager: NISessionDelegate {
 
     func sessionSuspensionEnded(_ session: NISession) {
         print("NI Session resumed")
-        // Re-run configurations for all known peers
         for (_, token) in peerTokens {
             let config = NINearbyPeerConfiguration(peerToken: token)
             session.run(config)
@@ -205,7 +278,7 @@ extension ProximityManager: MCSessionDelegate {
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
             DispatchQueue.main.async {
-                self.peers.removeValue(forKey: peerID.displayName)
+                self.peersData.removeValue(forKey: peerID.displayName)
                 self.peerTokens.removeValue(forKey: peerID)
                 self.updateNearestDistance()
             }
@@ -217,12 +290,10 @@ extension ProximityManager: MCSessionDelegate {
     }
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        // Received discovery token from peer
         do {
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
                 peerTokens[peerID] = token
 
-                // Configure NI session with this peer's token
                 let config = NINearbyPeerConfiguration(peerToken: token)
                 niSession?.run(config)
 
@@ -241,7 +312,6 @@ extension ProximityManager: MCSessionDelegate {
 // MARK: - MCNearbyServiceAdvertiserDelegate
 extension ProximityManager: MCNearbyServiceAdvertiserDelegate {
     func advertiser(_ advertiser: MCNearbyServiceAdvertiser, didReceiveInvitationFromPeer peerID: MCPeerID, withContext context: Data?, invitationHandler: @escaping (Bool, MCSession?) -> Void) {
-        // Auto-accept invitations
         invitationHandler(true, mcSession)
     }
 }
@@ -250,7 +320,6 @@ extension ProximityManager: MCNearbyServiceAdvertiserDelegate {
 extension ProximityManager: MCNearbyServiceBrowserDelegate {
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
         print("Found peer: \(peerID.displayName)")
-        // Invite peer to session
         browser.invitePeer(peerID, to: mcSession!, withContext: nil, timeout: 10)
     }
 
