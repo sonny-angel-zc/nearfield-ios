@@ -1,4 +1,4 @@
-# Social Beating
+# Nearfield
 
 A sound installation where phones create richer harmonics as people physically get closer to each other.
 
@@ -32,13 +32,13 @@ Each participant's phone plays a simple tone. As two people approach each other,
 1. Open Xcode
 2. Create new project: **File → New → Project → iOS → App**
 3. Settings:
-   - Product Name: `SocialBeating`
+   - Product Name: `Nearfield`
    - Interface: `SwiftUI`
    - Language: `Swift`
-4. Copy the files from `SocialBeating/` into your project:
-   - `SocialBeatingApp.swift` → Replace existing
+4. Copy the files from `Nearfield/` into your project:
+   - `NearfieldApp.swift` → Replace existing
    - `ContentView.swift` → Replace existing
-   - `social_beating.html` → Add to project (check "Copy items if needed")
+   - `nearfield.html` → Add to project (check "Copy items if needed")
    - `Info.plist` → Merge with existing or replace
 
 5. Add frameworks to target:

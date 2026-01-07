@@ -1,4 +1,4 @@
-# Social Beating - UWB iOS App Specification
+# Nearfield - UWB iOS App Specification
 
 A native iOS app that uses Ultra-Wideband (UWB) for precise proximity detection in a multi-person sound installation. When people get closer together, their phones' sounds become harmonically richer through wave interference (beating).
 
@@ -19,7 +19,7 @@ Each phone plays a single tone. When phones are far apart, you hear pure sine wa
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      SwiftUI App                             │
-│  SocialBeatingApp.swift                                      │
+│  NearfieldApp.swift                                          │
 │  └── WindowGroup → ContentView                               │
 ├─────────────────────────────────────────────────────────────┤
 │                      ContentView                             │
@@ -38,7 +38,7 @@ Each phone plays a single tone. When phones are far apart, you hear pure sine wa
 ├─────────────────────────────────────────────────────────────┤
 │                      WebViewContainer                        │
 │  └── WKWebView                                               │
-│      ├── Loads bundled social_beating.html                  │
+│      ├── Loads bundled nearfield.html                       │
 │      └── JS Bridge: updateNativeProximity(distance, count)  │
 ├─────────────────────────────────────────────────────────────┤
 │                    Web Audio Layer                           │
@@ -99,7 +99,7 @@ class ProximityManager: NSObject, ObservableObject {
     private var peerID: MCPeerID!
 
     // Service type for Bonjour discovery
-    private let serviceType = "social-beating"
+    private let serviceType = "nearfield"
 
     // Map peer IDs to their NI tokens
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
@@ -126,7 +126,7 @@ struct WebViewContainer: UIViewRepresentable {
 
         // Load bundled HTML
         let webView = WKWebView(frame: .zero, configuration: config)
-        if let htmlPath = Bundle.main.path(forResource: "social_beating", ofType: "html") {
+        if let htmlPath = Bundle.main.path(forResource: "nearfield", ofType: "html") {
             let htmlUrl = URL(fileURLWithPath: htmlPath)
             webView.loadFileURL(htmlUrl, allowingReadAccessTo: htmlUrl.deletingLastPathComponent())
         }
@@ -237,11 +237,11 @@ function updateHarmonics() {
 
 <!-- Multipeer Connectivity (Bonjour) -->
 <key>NSLocalNetworkUsageDescription</key>
-<string>This app uses local network to find other Social Beating devices nearby.</string>
+<string>This app uses local network to find other Nearfield devices nearby.</string>
 <key>NSBonjourServices</key>
 <array>
-    <string>_social-beating._tcp</string>
-    <string>_social-beating._udp</string>
+    <string>_nearfield._tcp</string>
+    <string>_nearfield._udp</string>
 </array>
 
 <!-- Bluetooth fallback -->
@@ -262,11 +262,11 @@ function updateHarmonics() {
 ios-app/
 ├── README.md                    # Setup instructions
 ├── SPECIFICATION.md             # This file
-└── SocialBeating/
-    └── SocialBeating/
-        ├── SocialBeatingApp.swift    # @main App entry point
+└── Nearfield/
+    └── Nearfield/
+        ├── NearfieldApp.swift        # @main App entry point
         ├── ContentView.swift          # Main view + ProximityManager
-        ├── social_beating.html        # Bundled web audio interface
+        ├── nearfield.html             # Bundled web audio interface
         └── Info.plist                 # Permissions and config
 ```
 
@@ -285,7 +285,7 @@ ios-app/
    - MultipeerConnectivity.framework
    - WebKit.framework
 4. Set iOS Deployment Target: 16.0
-5. Add social_beating.html to bundle (Copy items if needed)
+5. Add nearfield.html to bundle (Copy items if needed)
 6. Sign with developer account
 7. Build and run on physical device
 
