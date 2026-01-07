@@ -45,7 +45,7 @@ struct WebViewContainer: UIViewRepresentable {
         webView.backgroundColor = .clear
         webView.scrollView.backgroundColor = .clear
 
-        if let htmlPath = Bundle.main.path(forResource: "social_beating", ofType: "html") {
+        if let htmlPath = Bundle.main.path(forResource: "nearfield", ofType: "html") {
             let htmlUrl = URL(fileURLWithPath: htmlPath)
             webView.loadFileURL(htmlUrl, allowingReadAccessTo: htmlUrl.deletingLastPathComponent())
         }
@@ -113,7 +113,7 @@ class ProximityManager: NSObject, ObservableObject {
     private var mcBrowser: MCNearbyServiceBrowser?
     private var peerID: MCPeerID!
 
-    private let serviceType = "social-beat"  // Max 15 chars for Bonjour
+    private let serviceType = "nearfield"  // Max 15 chars for Bonjour
 
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
     private var tokenToPeer: [Data: MCPeerID] = [:]  // Map token data to peer

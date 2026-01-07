@@ -3,86 +3,87 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		BB62ECE9E650C9B6E5CC668A /* social_beating.html in Resources */ = {isa = PBXBuildFile; fileRef = 1D1A71868E28076147E25044 /* social_beating.html */; };
-		C6BEA0AA9D76DB6A9C320DE2 /* SocialBeatingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058AD354C0476BA1641F47B6 /* SocialBeatingApp.swift */; };
-		D601D68326A291BA810A059B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4114A811AE9B55813A2DC5FB /* ContentView.swift */; };
+		1A819DD24973581052EA9A0A /* nearfield.html in Resources */ = {isa = PBXBuildFile; fileRef = 37C0646667DDB929D70CAC9E /* nearfield.html */; };
+		4E306E509FC192897A6A1053 /* NearfieldApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1AFF821975E43488888CD72 /* NearfieldApp.swift */; };
+		95B17610906B225E9BACF3D0 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E78D4EB9B7A0874B969FD79 /* ContentView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		058AD354C0476BA1641F47B6 /* SocialBeatingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialBeatingApp.swift; sourceTree = "<group>"; };
-		08D413F7B50482F8E1DE1445 /* SocialBeating.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SocialBeating.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1D1A71868E28076147E25044 /* social_beating.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = social_beating.html; sourceTree = "<group>"; };
-		4114A811AE9B55813A2DC5FB /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		37C0646667DDB929D70CAC9E /* nearfield.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = nearfield.html; sourceTree = "<group>"; };
+		4E78D4EB9B7A0874B969FD79 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		8BD28AC5102D8EF39C97D770 /* Nearfield.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Nearfield.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1AFF821975E43488888CD72 /* NearfieldApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NearfieldApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		50309674F54E04093E56F11C = {
+		5A3C24E79312995D5953D76D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C7DE95F7ADE2594C7E76D012 /* SocialBeating */,
-				61651A6A1B10613CE2AD8398 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		61651A6A1B10613CE2AD8398 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				08D413F7B50482F8E1DE1445 /* SocialBeating.app */,
+				8BD28AC5102D8EF39C97D770 /* Nearfield.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		C7DE95F7ADE2594C7E76D012 /* SocialBeating */ = {
+		8424BBE5A0F6EF65B9095412 = {
 			isa = PBXGroup;
 			children = (
-				4114A811AE9B55813A2DC5FB /* ContentView.swift */,
-				1D1A71868E28076147E25044 /* social_beating.html */,
-				058AD354C0476BA1641F47B6 /* SocialBeatingApp.swift */,
+				E60D28787DE4C8DD230B3950 /* Nearfield */,
+				5A3C24E79312995D5953D76D /* Products */,
 			);
-			name = SocialBeating;
-			path = SocialBeating/SocialBeating;
+			sourceTree = "<group>";
+		};
+		E60D28787DE4C8DD230B3950 /* Nearfield */ = {
+			isa = PBXGroup;
+			children = (
+				4E78D4EB9B7A0874B969FD79 /* ContentView.swift */,
+				37C0646667DDB929D70CAC9E /* nearfield.html */,
+				B1AFF821975E43488888CD72 /* NearfieldApp.swift */,
+			);
+			name = Nearfield;
+			path = Nearfield/Nearfield;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4D4F6CCF435CD8ACB54EC8CB /* SocialBeating */ = {
+		92F15ECC2F792E8FBE165DBC /* Nearfield */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 9B523B40212EFA872AF3D686 /* Build configuration list for PBXNativeTarget "SocialBeating" */;
+			buildConfigurationList = B324CD11E1173B5BD13E97CF /* Build configuration list for PBXNativeTarget "Nearfield" */;
 			buildPhases = (
-				6ED02D34F51E7477EBD215C0 /* Sources */,
-				BDD8212324090801A143EE14 /* Resources */,
+				31D2F492413E313506759E20 /* Sources */,
+				2CE61272A094FEA45F80FE47 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			name = SocialBeating;
+			name = Nearfield;
 			packageProductDependencies = (
 			);
-			productName = SocialBeating;
-			productReference = 08D413F7B50482F8E1DE1445 /* SocialBeating.app */;
+			productName = Nearfield;
+			productReference = 8BD28AC5102D8EF39C97D770 /* Nearfield.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		79637CF03FA5EE52033EBDD7 /* Project object */ = {
+		F588863B567EA51D25A8B2E7 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					4D4F6CCF435CD8ACB54EC8CB = {
+					92F15ECC2F792E8FBE165DBC = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 				};
 			};
-			buildConfigurationList = A2F6B22B89560D7AFBB65801 /* Build configuration list for PBXProject "SocialBeating" */;
+			buildConfigurationList = DEE0044A55E0310FF0F96E60 /* Build configuration list for PBXProject "Nearfield" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -90,60 +91,42 @@
 				Base,
 				en,
 			);
-			mainGroup = 50309674F54E04093E56F11C;
+			mainGroup = 8424BBE5A0F6EF65B9095412;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4D4F6CCF435CD8ACB54EC8CB /* SocialBeating */,
+				92F15ECC2F792E8FBE165DBC /* Nearfield */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		BDD8212324090801A143EE14 /* Resources */ = {
+		2CE61272A094FEA45F80FE47 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB62ECE9E650C9B6E5CC668A /* social_beating.html in Resources */,
+				1A819DD24973581052EA9A0A /* nearfield.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		6ED02D34F51E7477EBD215C0 /* Sources */ = {
+		31D2F492413E313506759E20 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D601D68326A291BA810A059B /* ContentView.swift in Sources */,
-				C6BEA0AA9D76DB6A9C320DE2 /* SocialBeatingApp.swift in Sources */,
+				95B17610906B225E9BACF3D0 /* ContentView.swift in Sources */,
+				4E306E509FC192897A6A1053 /* NearfieldApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		1DB87A8CD2283FC3F697F946 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 34TC8WMBSQ;
-				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = SocialBeating/SocialBeating/Info.plist;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.socialbeating.app;
-				SDKROOT = iphoneos;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		2113B61BF4CFE4184586AE3B /* Debug */ = {
+		0A799D264CDEF89D583BC436 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -208,7 +191,25 @@
 			};
 			name = Debug;
 		};
-		5202C62B7EC75F188D5C6EF4 /* Release */ = {
+		0EBBD0C6854F9559C23E32B6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_PREVIEWS = YES;
+				INFOPLIST_FILE = Nearfield/Nearfield/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearfield.app;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6AA613DC4DC03E3B626881E3 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -266,19 +267,18 @@
 			};
 			name = Release;
 		};
-		AAD34123CA1892BB8FCF697C /* Release */ = {
+		6EF13B470C6F048B12293CEA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = 34TC8WMBSQ;
 				ENABLE_PREVIEWS = YES;
-				INFOPLIST_FILE = SocialBeating/SocialBeating/Info.plist;
+				INFOPLIST_FILE = Nearfield/Nearfield/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.socialbeating.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.nearfield.app;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -288,25 +288,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		9B523B40212EFA872AF3D686 /* Build configuration list for PBXNativeTarget "SocialBeating" */ = {
+		B324CD11E1173B5BD13E97CF /* Build configuration list for PBXNativeTarget "Nearfield" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				1DB87A8CD2283FC3F697F946 /* Debug */,
-				AAD34123CA1892BB8FCF697C /* Release */,
+				0EBBD0C6854F9559C23E32B6 /* Debug */,
+				6EF13B470C6F048B12293CEA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		A2F6B22B89560D7AFBB65801 /* Build configuration list for PBXProject "SocialBeating" */ = {
+		DEE0044A55E0310FF0F96E60 /* Build configuration list for PBXProject "Nearfield" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				2113B61BF4CFE4184586AE3B /* Debug */,
-				5202C62B7EC75F188D5C6EF4 /* Release */,
+				0A799D264CDEF89D583BC436 /* Debug */,
+				6AA613DC4DC03E3B626881E3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 79637CF03FA5EE52033EBDD7 /* Project object */;
+	rootObject = F588863B567EA51D25A8B2E7 /* Project object */;
 }

@@ -24,11 +24,11 @@
 	<string>Bluetooth is used to discover nearby devices for the sound installation.</string>
 	<key>NSBonjourServices</key>
 	<array>
-		<string>_social-beat._tcp</string>
-		<string>_social-beat._udp</string>
+		<string>_nearfield._tcp</string>
+		<string>_nearfield._udp</string>
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>This app uses local network to find other Social Beating devices nearby.</string>
+	<string>This app uses local network to find other Nearfield devices nearby.</string>
 	<key>NSNearbyInteractionAllowOnceUsageDescription</key>
 	<string>This app uses Nearby Interaction to detect the distance to other phones for the sound installation.</string>
 	<key>NSNearbyInteractionUsageDescription</key>

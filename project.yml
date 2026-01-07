@@ -1,6 +1,6 @@
-name: SocialBeating
+name: Nearfield
 options:
-  bundleIdPrefix: com.socialbeating
+  bundleIdPrefix: com.nearfield
   deploymentTarget:
     iOS: "16.0"
   xcodeVersion: "15.0"
@@ -11,22 +11,22 @@ settings:
     CODE_SIGN_STYLE: Automatic
 
 targets:
-  SocialBeating:
+  Nearfield:
     type: application
     platform: iOS
     sources:
-      - path: SocialBeating/SocialBeating
+      - path: Nearfield/Nearfield
         excludes:
           - "*.plist"
     settings:
       base:
-        INFOPLIST_FILE: SocialBeating/SocialBeating/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.socialbeating.app
+        INFOPLIST_FILE: Nearfield/Nearfield/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.nearfield.app
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.0"
         ENABLE_PREVIEWS: true
     info:
-      path: SocialBeating/SocialBeating/Info.plist
+      path: Nearfield/Nearfield/Info.plist
       properties:
         UILaunchScreen:
           UIColorName: ""
@@ -36,10 +36,10 @@ targets:
         NSNearbyInteractionAllowOnceUsageDescription: "This app uses Nearby Interaction to detect the distance to other phones for the sound installation."
         NSNearbyInteractionUsageDescription: "This app uses Nearby Interaction to detect the distance to other phones for the sound installation."
         # Multipeer Connectivity
-        NSLocalNetworkUsageDescription: "This app uses local network to find other Social Beating devices nearby."
+        NSLocalNetworkUsageDescription: "This app uses local network to find other Nearfield devices nearby."
         NSBonjourServices:
-          - "_social-beat._tcp"
-          - "_social-beat._udp"
+          - "_nearfield._tcp"
+          - "_nearfield._udp"
         # Bluetooth
         NSBluetoothAlwaysUsageDescription: "Bluetooth is used to discover nearby devices for the sound installation."
         NSBluetoothPeripheralUsageDescription: "Bluetooth is used to discover nearby devices for the sound installation."

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SocialBeatingApp: App {
+struct NearfieldApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
