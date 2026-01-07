@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Nearfield</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -45,71 +46,23 @@
             margin-bottom: 15px;
         }
 
-        /* 3D Sphere Container */
-        .sphere-container {
+        /* 3D Scene Container */
+        .scene-container {
             width: 280px;
             height: 280px;
             position: relative;
             margin: 10px 0;
-        }
-
-        .sphere-canvas {
-            width: 100%;
-            height: 100%;
             border-radius: 50%;
+            overflow: hidden;
             background: radial-gradient(circle at 30% 30%, #1a1a24, #0a0a0f);
             box-shadow:
                 inset 0 0 60px rgba(74, 158, 255, 0.1),
                 0 0 40px rgba(74, 158, 255, 0.05);
         }
 
-        /* Center dot (you) */
-        .center-marker {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 16px;
-            height: 16px;
-            background: #4a9eff;
-            border-radius: 50%;
-            box-shadow: 0 0 20px rgba(74, 158, 255, 0.6);
-            z-index: 10;
-        }
-
-        /* Distance rings */
-        .distance-ring {
-            position: absolute;
-            border: 1px solid rgba(74, 158, 255, 0.15);
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-        }
-
-        .distance-ring.ring-1 { width: 33%; height: 33%; }
-        .distance-ring.ring-2 { width: 66%; height: 66%; }
-        .distance-ring.ring-3 { width: 100%; height: 100%; }
-
-        /* Peer dots */
-        .peer-dot {
-            position: absolute;
-            width: 14px;
-            height: 14px;
-            background: #50c878;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 0 15px rgba(80, 200, 120, 0.6);
-            transition: all 0.15s ease-out;
-            z-index: 5;
-        }
-
-        .peer-dot.close {
-            background: #ff6b6b;
-            box-shadow: 0 0 20px rgba(255, 107, 107, 0.8);
-            width: 18px;
-            height: 18px;
+        .scene-container canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
 
         /* Info display */
@@ -221,21 +174,128 @@
             padding: 10px;
             text-align: center;
         }
+
+        /* Loading Screen */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0a0a0f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-title {
+            font-size: 1.8rem;
+            font-weight: 300;
+            color: #fff;
+            margin-bottom: 30px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 2px solid #1a1a24;
+            border-top-color: #4a9eff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 30px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-steps {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.85rem;
+        }
+
+        .loading-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            color: #444;
+            transition: color 0.3s;
+        }
+
+        .loading-step.active {
+            color: #4a9eff;
+        }
+
+        .loading-step.done {
+            color: #50c878;
+        }
+
+        .loading-step-icon {
+            width: 18px;
+            text-align: center;
+            font-size: 0.75rem;
+        }
+
+        .loading-step.active .loading-step-icon::before {
+            content: "●";
+            animation: pulse 1s ease infinite;
+        }
+
+        .loading-step.done .loading-step-icon::before {
+            content: "✓";
+        }
+
+        .loading-step:not(.active):not(.done) .loading-step-icon::before {
+            content: "○";
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
     </style>
 </head>
 <body>
+    <!-- Loading Screen -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-title">Nearfield</div>
+        <div class="loading-spinner"></div>
+        <ul class="loading-steps">
+            <li class="loading-step" id="step-audio">
+                <span class="loading-step-icon"></span>
+                <span>Initializing audio engine</span>
+            </li>
+            <li class="loading-step" id="step-3d">
+                <span class="loading-step-icon"></span>
+                <span>Setting up 3D compass</span>
+            </li>
+            <li class="loading-step" id="step-uwb">
+                <span class="loading-step-icon"></span>
+                <span>Starting UWB ranging</span>
+            </li>
+            <li class="loading-step" id="step-peers">
+                <span class="loading-step-icon"></span>
+                <span>Searching for nearby devices</span>
+            </li>
+        </ul>
+    </div>
+
     <div class="container">
         <h1>Nearfield</h1>
         <p class="subtitle">Tilt to detune / Get closer for harmonics</p>
 
-        <div class="sphere-container">
-            <canvas class="sphere-canvas" id="sphereCanvas"></canvas>
-            <div class="distance-ring ring-3"></div>
-            <div class="distance-ring ring-2"></div>
-            <div class="distance-ring ring-1"></div>
-            <div class="center-marker"></div>
-            <div id="peerDotsContainer"></div>
-        </div>
+        <div class="scene-container" id="sceneContainer"></div>
 
         <div class="info-row">
             <div>
@@ -264,26 +324,25 @@
     </div>
 
     <script>
-        // Audio Context
+        // ==================== AUDIO ====================
         let audioCtx = null;
 
-        // Pentatonic scale
         const notes = {
             'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63,
             'G4': 392.00, 'A4': 440.00, 'C5': 523.25, 'D5': 587.33
         };
 
-        // State
         let phoneOsc = null;
         let phoneGain = null;
         let isPlaying = false;
         let currentNote = 'A4';
-
-        // Harmonic oscillators
         let harmonicOscs = [];
         let harmonicGains = [];
 
-        // Data from native
+        const maxDetuneCents = 50;
+        let currentDetune = 0;
+
+        // ==================== NATIVE DATA ====================
         let nativeData = {
             nearestDistance: -1,
             peerCount: 0,
@@ -292,14 +351,276 @@
             tiltY: 0
         };
 
-        // Detune settings
-        const maxDetuneCents = 50;  // Max detune in cents
-        let currentDetune = 0;
+        // ==================== THREE.JS ====================
+        let scene, camera, renderer;
+        let centerSphere;
+        let peerSpheres = {};
+        let distanceRings = [];
+        let compassGroup;  // Group that rotates with device tilt
 
-        // Sphere canvas
-        let sphereCanvas, sphereCtx;
-        const sphereRadius = 130;
+        const MAX_RANGE = 5;  // 5 meters max range
+        const SCENE_RADIUS = 2;  // Scene fits in 2 unit radius
+        const SCALE = SCENE_RADIUS / MAX_RANGE;  // Convert meters to scene units
 
+        // Smoothed tilt values
+        let smoothTiltX = 0;
+        let smoothTiltY = 0;
+
+        function initThreeJS() {
+            const container = document.getElementById('sceneContainer');
+            const width = container.offsetWidth;
+            const height = container.offsetHeight;
+
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera - overhead compass view
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 100);
+            camera.position.set(0, 5, 0);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+
+            // Compass group - everything inside rotates with device tilt
+            compassGroup = new THREE.Group();
+            scene.add(compassGroup);
+
+            // Lighting (attached to scene, not compass)
+            const ambientLight = new THREE.AmbientLight(0x606060, 0.8);
+            scene.add(ambientLight);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            mainLight.position.set(2, 5, 2);
+            scene.add(mainLight);
+
+            const fillLight = new THREE.PointLight(0x4a9eff, 0.4, 15);
+            fillLight.position.set(-2, 3, -2);
+            scene.add(fillLight);
+
+            // Center sphere (you) - stays at origin
+            const centerGeometry = new THREE.SphereGeometry(0.08, 32, 32);
+            const centerMaterial = new THREE.MeshPhongMaterial({
+                color: 0x4a9eff,
+                emissive: 0x4a9eff,
+                emissiveIntensity: 0.5,
+                shininess: 100
+            });
+            centerSphere = new THREE.Mesh(centerGeometry, centerMaterial);
+            centerSphere.position.set(0, 0, 0);
+            compassGroup.add(centerSphere);
+
+            // Center glow
+            const glowGeometry = new THREE.SphereGeometry(0.12, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4a9eff,
+                transparent: true,
+                opacity: 0.2
+            });
+            const centerGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+            centerSphere.add(centerGlow);
+
+            // Distance rings (at 1m, 2m, 3m, 4m, 5m)
+            [1, 2, 3, 4, 5].forEach((meters, i) => {
+                const radius = meters * SCALE;
+                const ringGeometry = new THREE.RingGeometry(radius - 0.01, radius + 0.01, 64);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x4a9eff,
+                    transparent: true,
+                    opacity: 0.15 - i * 0.02,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.y = 0;
+                compassGroup.add(ring);
+                distanceRings.push(ring);
+            });
+
+            // Cardinal direction markers
+            const markerGeometry = new THREE.ConeGeometry(0.04, 0.12, 8);
+            const directions = [
+                { angle: 0, color: 0xff4444, label: 'N' },           // North (front)
+                { angle: Math.PI, color: 0x666666, label: 'S' },     // South
+                { angle: Math.PI / 2, color: 0x666666, label: 'E' }, // East
+                { angle: -Math.PI / 2, color: 0x666666, label: 'W' } // West
+            ];
+
+            directions.forEach(dir => {
+                const markerMaterial = new THREE.MeshBasicMaterial({ color: dir.color });
+                const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+                const r = SCENE_RADIUS + 0.1;
+                marker.position.set(Math.sin(dir.angle) * r, 0, -Math.cos(dir.angle) * r);
+                marker.rotation.x = Math.PI / 2;
+                marker.rotation.z = -dir.angle;
+                compassGroup.add(marker);
+            });
+
+            // Subtle crosshair lines
+            const lineMaterial = new THREE.LineBasicMaterial({
+                color: 0x4a9eff,
+                transparent: true,
+                opacity: 0.1
+            });
+
+            // N-S line
+            const nsGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, -SCENE_RADIUS),
+                new THREE.Vector3(0, 0, SCENE_RADIUS)
+            ]);
+            compassGroup.add(new THREE.Line(nsGeometry, lineMaterial));
+
+            // E-W line
+            const ewGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(-SCENE_RADIUS, 0, 0),
+                new THREE.Vector3(SCENE_RADIUS, 0, 0)
+            ]);
+            compassGroup.add(new THREE.Line(ewGeometry, lineMaterial));
+
+            // Start animation loop
+            animate();
+        }
+
+        function createPeerSphere(name) {
+            const geometry = new THREE.SphereGeometry(0.1, 32, 32);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x50c878,
+                emissive: 0x50c878,
+                emissiveIntensity: 0.4,
+                shininess: 100
+            });
+            const sphere = new THREE.Mesh(geometry, material);
+
+            // Add glow
+            const glowGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x50c878,
+                transparent: true,
+                opacity: 0.2
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            sphere.add(glow);
+
+            sphere.userData = { name, glow, material, targetPos: new THREE.Vector3() };
+            compassGroup.add(sphere);  // Add to compass group so it tilts with device
+            return sphere;
+        }
+
+        function updatePeerSpheres() {
+            const peers = nativeData.peers || {};
+            const currentPeerNames = new Set(Object.keys(peers));
+
+            // Remove spheres for peers that left
+            for (const name of Object.keys(peerSpheres)) {
+                if (!currentPeerNames.has(name)) {
+                    compassGroup.remove(peerSpheres[name]);
+                    delete peerSpheres[name];
+                }
+            }
+
+            // Update or create spheres for current peers
+            for (const [name, peer] of Object.entries(peers)) {
+                if (!peer || peer.distance < 0) continue;
+
+                // Create sphere if needed
+                if (!peerSpheres[name]) {
+                    peerSpheres[name] = createPeerSphere(name);
+                }
+
+                const sphere = peerSpheres[name];
+
+                // Calculate 3D position from direction vector
+                // Clamp distance to max range
+                const clampedDistance = Math.min(peer.distance, MAX_RANGE);
+                let x = 0, y = 0, z = 0;
+
+                // Check if we have valid direction data (not zero vector)
+                const hasDirection = peer.directionX !== undefined &&
+                    peer.directionY !== undefined &&
+                    peer.directionZ !== undefined;
+                const magnitude = hasDirection ? Math.sqrt(
+                    peer.directionX ** 2 + peer.directionY ** 2 + peer.directionZ ** 2
+                ) : 0;
+
+                if (hasDirection && magnitude > 0.01) {
+                    // Use direction vector
+                    // X = left/right, Y = up/down, Z = forward/back
+                    x = (peer.directionX / magnitude) * clampedDistance * SCALE;
+                    y = (peer.directionY / magnitude) * clampedDistance * SCALE;
+                    z = -(peer.directionZ / magnitude) * clampedDistance * SCALE;  // Negate Z so forward is -Z
+                } else if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
+                    // Fallback to horizontal angle
+                    x = Math.sin(peer.horizontalAngle) * clampedDistance * SCALE;
+                    z = -Math.cos(peer.horizontalAngle) * clampedDistance * SCALE;
+                } else {
+                    // No direction data - place at distance directly in front
+                    z = -clampedDistance * SCALE;
+                }
+
+                // Store target position
+                sphere.userData.targetPos.set(x, y, z);
+
+                // Smoothly interpolate position
+                sphere.position.x += (x - sphere.position.x) * 0.2;
+                sphere.position.y += (y - sphere.position.y) * 0.2;
+                sphere.position.z += (z - sphere.position.z) * 0.2;
+
+                // Change color based on proximity
+                const isClose = peer.distance < 0.5;
+                const targetColor = isClose ? 0xff6b6b : 0x50c878;
+                const targetEmissive = isClose ? 0xff6b6b : 0x50c878;
+
+                sphere.userData.material.color.setHex(targetColor);
+                sphere.userData.material.emissive.setHex(targetEmissive);
+                sphere.userData.material.emissiveIntensity = isClose ? 0.6 : 0.4;
+                sphere.userData.glow.material.color.setHex(targetColor);
+                sphere.userData.glow.material.opacity = isClose ? 0.3 : 0.2;
+
+                // Scale based on proximity (closer = larger)
+                const scale = 0.8 + (1 - Math.min(peer.distance / MAX_RANGE, 1)) * 0.6;
+                sphere.scale.setScalar(scale);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Apply device tilt to compass group
+            // tiltX = roll (left/right tilt), tiltY = pitch (forward/back tilt)
+            const tiltX = nativeData.tiltX || 0;
+            const tiltY = nativeData.tiltY || 0;
+
+            // Smooth the tilt values
+            smoothTiltX += (tiltX - smoothTiltX) * 0.1;
+            smoothTiltY += (tiltY - smoothTiltY) * 0.1;
+
+            // Apply tilt to compass - this lets you "look around" by tilting the phone
+            // Tilt forward/back rotates around X axis, tilt left/right rotates around Z axis
+            if (compassGroup) {
+                const maxTilt = 0.6;  // Max tilt in radians (~35 degrees)
+                compassGroup.rotation.x = Math.max(-maxTilt, Math.min(maxTilt, smoothTiltY * 1.5));
+                compassGroup.rotation.z = Math.max(-maxTilt, Math.min(maxTilt, -smoothTiltX * 1.5));
+            }
+
+            // Pulse the center sphere glow
+            if (centerSphere && centerSphere.children[0]) {
+                const pulse = 0.2 + Math.sin(Date.now() / 500) * 0.1;
+                centerSphere.children[0].material.opacity = pulse;
+            }
+
+            // Update peer positions
+            updatePeerSpheres();
+
+            if (renderer && scene && camera) {
+                renderer.render(scene, camera);
+            }
+        }
+
+        // ==================== AUDIO FUNCTIONS ====================
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -309,15 +630,115 @@
             }
         }
 
+        function setupHarmonics() {
+            const harmonicRatios = [2, 1.5, 1.25];
+            harmonicRatios.forEach((ratio, i) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = notes[currentNote] * ratio;
+                gain.gain.value = 0;
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                harmonicOscs.push(osc);
+                harmonicGains.push(gain);
+            });
+        }
+
+        function stopHarmonics() {
+            harmonicOscs.forEach(osc => { try { osc.stop(); } catch(e) {} });
+            harmonicOscs = [];
+            harmonicGains = [];
+        }
+
+        function updateHarmonics() {
+            if (!isPlaying || harmonicGains.length === 0) return;
+
+            harmonicOscs.forEach((osc, i) => {
+                const ratios = [2, 1.5, 1.25];
+                osc.frequency.value = notes[currentNote] * ratios[i];
+            });
+
+            const distance = nativeData.nearestDistance;
+            if (distance < 0 || distance > 2) {
+                harmonicGains.forEach(g => g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1));
+                return;
+            }
+
+            const proximityLevel = 1 - (distance / 2);
+            const maxHarmonicGain = 0.25;
+
+            harmonicGains.forEach((gain, i) => {
+                const threshold = (i + 1) * 0.25;
+                const level = Math.max(0, (proximityLevel - threshold) / (1 - threshold));
+                gain.gain.setTargetAtTime(level * maxHarmonicGain, audioCtx.currentTime, 0.1);
+            });
+        }
+
+        function updateTiltDetune() {
+            if (!isPlaying || !phoneOsc) return;
+
+            const tiltX = nativeData.tiltX || 0;
+            const normalizedTilt = Math.max(-1, Math.min(1, tiltX / 0.5));
+            currentDetune = normalizedTilt * maxDetuneCents;
+
+            // Apply detune to root oscillator
+            phoneOsc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
+
+            // Apply same detune to all harmonics
+            harmonicOscs.forEach(osc => {
+                osc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
+            });
+
+            const detuneEl = document.getElementById('detuneIndicator');
+            if (Math.abs(currentDetune) > 1) {
+                detuneEl.textContent = (currentDetune > 0 ? '+' : '') + currentDetune.toFixed(0) + ' cents';
+            } else {
+                detuneEl.textContent = '';
+            }
+        }
+
+        function togglePlay() {
+            initAudio();
+            const btn = document.getElementById('playButton');
+
+            if (isPlaying) {
+                if (phoneGain) {
+                    phoneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                }
+                setTimeout(() => {
+                    if (phoneOsc) { phoneOsc.stop(); phoneOsc = null; }
+                }, 300);
+                stopHarmonics();
+                isPlaying = false;
+                btn.classList.remove('playing');
+                btn.innerHTML = 'TAP TO<br>PLAY';
+                document.getElementById('detuneIndicator').textContent = '';
+            } else {
+                phoneOsc = audioCtx.createOscillator();
+                phoneGain = audioCtx.createGain();
+                phoneOsc.type = 'sine';
+                phoneOsc.frequency.value = notes[currentNote];
+                phoneGain.gain.value = 0.8;
+                phoneOsc.connect(phoneGain);
+                phoneGain.connect(audioCtx.destination);
+                phoneOsc.start();
+                setupHarmonics();
+                isPlaying = true;
+                btn.classList.add('playing');
+                btn.innerHTML = 'PLAYING';
+            }
+        }
+
+        // ==================== NATIVE BRIDGE ====================
         // Called by native Swift code
         function updateNativeProximity(distance, peerCount) {
-            // Legacy support
             nativeData.nearestDistance = distance;
             nativeData.peerCount = peerCount;
             updateUI();
         }
 
-        // New unified data handler
         function updateNativeData(data) {
             nativeData = { ...nativeData, ...data };
             updateUI();
@@ -325,7 +746,6 @@
         }
 
         function updateUI() {
-            // Update distance display
             const distEl = document.getElementById('distanceValue');
             const peerEl = document.getElementById('peerCount');
             const statusBar = document.getElementById('statusBar');
@@ -346,175 +766,7 @@
                 statusBar.textContent = nativeData.peerCount + ' device' + (nativeData.peerCount > 1 ? 's' : '') + ' connected';
             }
 
-            // Update peer dots on sphere
-            renderPeerDots();
-
-            // Update harmonics
             updateHarmonics();
-        }
-
-        function renderPeerDots() {
-            const container = document.getElementById('peerDotsContainer');
-            container.innerHTML = '';
-
-            const peers = nativeData.peers || {};
-            const sphereContainer = document.querySelector('.sphere-container');
-            const centerX = sphereContainer.offsetWidth / 2;
-            const centerY = sphereContainer.offsetHeight / 2;
-            const maxRadius = (sphereContainer.offsetWidth / 2) - 15;
-
-            for (const [name, peer] of Object.entries(peers)) {
-                if (!peer || peer.distance < 0) continue;
-
-                const dot = document.createElement('div');
-                dot.className = 'peer-dot';
-
-                // Calculate position from direction vector
-                let x = centerX;
-                let y = centerY;
-
-                if (peer.directionX !== undefined && peer.directionZ !== undefined) {
-                    // Use direction vector (X and Z for horizontal plane)
-                    // Normalize and scale by distance (closer = closer to center)
-                    const distanceScale = Math.min(peer.distance / 3, 1);  // 3m = edge
-                    const dirMagnitude = Math.sqrt(peer.directionX ** 2 + peer.directionZ ** 2) || 1;
-
-                    x = centerX + (peer.directionX / dirMagnitude) * maxRadius * distanceScale;
-                    y = centerY - (peer.directionZ / dirMagnitude) * maxRadius * distanceScale;
-                } else if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
-                    // Fallback to horizontal angle
-                    const angle = peer.horizontalAngle;
-                    const distanceScale = Math.min(peer.distance / 3, 1);
-                    x = centerX + Math.sin(angle) * maxRadius * distanceScale;
-                    y = centerY - Math.cos(angle) * maxRadius * distanceScale;
-                }
-
-                // Mark as close if within 0.5m
-                if (peer.distance < 0.5) {
-                    dot.classList.add('close');
-                }
-
-                dot.style.left = x + 'px';
-                dot.style.top = y + 'px';
-                dot.title = name + ': ' + peer.distance.toFixed(2) + 'm';
-
-                container.appendChild(dot);
-            }
-        }
-
-        function updateTiltDetune() {
-            if (!isPlaying || !phoneOsc) return;
-
-            // Map tilt to detune (-maxDetuneCents to +maxDetuneCents)
-            // tiltX (roll) controls detune
-            const tiltX = nativeData.tiltX || 0;
-            const normalizedTilt = Math.max(-1, Math.min(1, tiltX / 0.5));  // ±0.5 rad = full detune
-            currentDetune = normalizedTilt * maxDetuneCents;
-
-            // Apply detune to oscillator
-            phoneOsc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
-
-            // Update display
-            const detuneEl = document.getElementById('detuneIndicator');
-            if (Math.abs(currentDetune) > 1) {
-                detuneEl.textContent = (currentDetune > 0 ? '+' : '') + currentDetune.toFixed(0) + ' cents';
-            } else {
-                detuneEl.textContent = '';
-            }
-        }
-
-        function setupHarmonics() {
-            const harmonicRatios = [2, 1.5, 1.25];
-
-            harmonicRatios.forEach((ratio, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                osc.type = 'sine';
-                osc.frequency.value = notes[currentNote] * ratio;
-                gain.gain.value = 0;
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-
-                harmonicOscs.push(osc);
-                harmonicGains.push(gain);
-            });
-        }
-
-        function stopHarmonics() {
-            harmonicOscs.forEach(osc => {
-                try { osc.stop(); } catch(e) {}
-            });
-            harmonicOscs = [];
-            harmonicGains = [];
-        }
-
-        function updateHarmonics() {
-            if (!isPlaying || harmonicGains.length === 0) return;
-
-            // Update harmonic frequencies
-            harmonicOscs.forEach((osc, i) => {
-                const ratios = [2, 1.5, 1.25];
-                osc.frequency.value = notes[currentNote] * ratios[i];
-            });
-
-            // Map distance to harmonic intensity
-            const distance = nativeData.nearestDistance;
-            if (distance < 0 || distance > 2) {
-                harmonicGains.forEach(g => g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1));
-                return;
-            }
-
-            // 0m = full harmonics, 2m = no harmonics
-            const proximityLevel = 1 - (distance / 2);
-            const maxHarmonicGain = 0.25;
-
-            harmonicGains.forEach((gain, i) => {
-                const threshold = (i + 1) * 0.25;
-                const level = Math.max(0, (proximityLevel - threshold) / (1 - threshold));
-                gain.gain.setTargetAtTime(level * maxHarmonicGain, audioCtx.currentTime, 0.1);
-            });
-        }
-
-        function togglePlay() {
-            initAudio();
-            const btn = document.getElementById('playButton');
-
-            if (isPlaying) {
-                if (phoneGain) {
-                    phoneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-                }
-                setTimeout(() => {
-                    if (phoneOsc) {
-                        phoneOsc.stop();
-                        phoneOsc = null;
-                    }
-                }, 300);
-                stopHarmonics();
-                isPlaying = false;
-                btn.classList.remove('playing');
-                btn.innerHTML = 'TAP TO<br>PLAY';
-                document.getElementById('detuneIndicator').textContent = '';
-            } else {
-                phoneOsc = audioCtx.createOscillator();
-                phoneGain = audioCtx.createGain();
-
-                phoneOsc.type = 'sine';
-                phoneOsc.frequency.value = notes[currentNote];
-                phoneGain.gain.value = 0.8;
-
-                phoneOsc.connect(phoneGain);
-                phoneGain.connect(audioCtx.destination);
-                phoneOsc.start();
-
-                setupHarmonics();
-
-                isPlaying = true;
-                btn.classList.add('playing');
-                btn.innerHTML = 'PLAYING';
-            }
         }
 
         function updateDisplay() {
@@ -522,48 +774,50 @@
             document.getElementById('myFreq').textContent = notes[currentNote].toFixed(1) + ' Hz';
         }
 
-        function initSphereCanvas() {
-            sphereCanvas = document.getElementById('sphereCanvas');
-            sphereCtx = sphereCanvas.getContext('2d');
-
-            // Set canvas size for retina
-            const dpr = window.devicePixelRatio || 1;
-            const rect = sphereCanvas.getBoundingClientRect();
-            sphereCanvas.width = rect.width * dpr;
-            sphereCanvas.height = rect.height * dpr;
-            sphereCtx.scale(dpr, dpr);
-
-            drawSphereBackground();
+        // ==================== LOADING ====================
+        function setLoadingStep(stepId, state) {
+            const step = document.getElementById(stepId);
+            if (!step) return;
+            step.classList.remove('active', 'done');
+            if (state === 'active') step.classList.add('active');
+            if (state === 'done') step.classList.add('done');
         }
 
-        function drawSphereBackground() {
-            if (!sphereCtx) return;
-
-            const w = sphereCanvas.width / (window.devicePixelRatio || 1);
-            const h = sphereCanvas.height / (window.devicePixelRatio || 1);
-            const cx = w / 2;
-            const cy = h / 2;
-
-            sphereCtx.clearRect(0, 0, w, h);
-
-            // Draw subtle grid lines
-            sphereCtx.strokeStyle = 'rgba(74, 158, 255, 0.08)';
-            sphereCtx.lineWidth = 1;
-
-            // Horizontal line
-            sphereCtx.beginPath();
-            sphereCtx.moveTo(10, cy);
-            sphereCtx.lineTo(w - 10, cy);
-            sphereCtx.stroke();
-
-            // Vertical line
-            sphereCtx.beginPath();
-            sphereCtx.moveTo(cx, 10);
-            sphereCtx.lineTo(cx, h - 10);
-            sphereCtx.stroke();
+        function hideLoading() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.classList.add('hidden');
+                setTimeout(() => overlay.style.display = 'none', 500);
+            }
         }
 
-        function init() {
+        // ==================== INIT ====================
+        async function init() {
+            // Step 1: Audio
+            setLoadingStep('step-audio', 'active');
+            await new Promise(r => setTimeout(r, 300));
+            setLoadingStep('step-audio', 'done');
+
+            // Step 2: 3D Scene
+            setLoadingStep('step-3d', 'active');
+            initThreeJS();
+            await new Promise(r => setTimeout(r, 400));
+            setLoadingStep('step-3d', 'done');
+
+            // Step 3: UWB (handled by native, we just show it's ready)
+            setLoadingStep('step-uwb', 'active');
+            await new Promise(r => setTimeout(r, 300));
+            setLoadingStep('step-uwb', 'done');
+
+            // Step 4: Searching for peers (stays active until found)
+            setLoadingStep('step-peers', 'active');
+            await new Promise(r => setTimeout(r, 500));
+            setLoadingStep('step-peers', 'done');
+
+            // Hide loading screen
+            await new Promise(r => setTimeout(r, 300));
+            hideLoading();
+
             // Note selector
             const selector = document.getElementById('noteSelector');
             selector.innerHTML = Object.keys(notes).map(note => `
@@ -585,37 +839,6 @@
 
             document.getElementById('playButton').addEventListener('click', togglePlay);
             updateDisplay();
-            initSphereCanvas();
-
-            // Demo: simulate peer for testing in browser
-            // Uncomment to test UI without native
-            /*
-            setInterval(() => {
-                const angle = Date.now() / 2000;
-                updateNativeData({
-                    nearestDistance: 1.5 + Math.sin(Date.now() / 1000) * 0.5,
-                    peerCount: 2,
-                    peers: {
-                        'iPhone-1': {
-                            distance: 1.5,
-                            directionX: Math.sin(angle),
-                            directionY: 0,
-                            directionZ: Math.cos(angle),
-                            horizontalAngle: angle
-                        },
-                        'iPhone-2': {
-                            distance: 2.2,
-                            directionX: Math.sin(angle + Math.PI),
-                            directionY: 0,
-                            directionZ: Math.cos(angle + Math.PI),
-                            horizontalAngle: angle + Math.PI
-                        }
-                    },
-                    tiltX: Math.sin(Date.now() / 500) * 0.3,
-                    tiltY: 0
-                });
-            }, 50);
-            */
         }
 
         window.addEventListener('load', init);
