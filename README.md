@@ -11,15 +11,30 @@ Each participant's phone plays a simple tone. As two people approach each other,
 3. **UWB Ranging**: NearbyInteraction measures precise distance (±cm accuracy)
 4. **Audio Response**: Web Audio API creates richer harmonics as distance decreases
 
+### Multi-Peer Harmony
+
+Each peer is assigned a unique base note from a pentatonic scale (deterministically by device name). When multiple peers are nearby, their notes naturally form chords — no coordination needed.
+
+### Sound Design
+
+- **Layered oscillators**: Sine + soft triangle blend for warmth
+- **Delay reverb**: Feedback delay creates spacious, installation-quality sound
+- **Spatial panning**: UWB direction data pans each peer's audio in stereo (left peers sound from left speaker, etc.)
+- **Exponential volume**: Power-curve gain mapping for natural fade-in as peers approach
+
+### 3D Visualization
+
+The compass view shows connecting lines between you and each peer. Lines glow brighter and shift from blue to warm white as peers get closer, providing visual feedback of harmonic connections.
+
 ## Proximity → Sound Mapping
 
 | Distance | Effect |
 |----------|--------|
-| > 2m | Base tone only |
-| 1-2m | First harmonic (octave) fades in |
-| 0.6-1m | Second harmonic (fifth) |
-| 0.3-0.6m | Third harmonic (major third) |
-| < 0.3m | Full harmonic richness |
+| > 3m | Silence (peer assigned but inaudible) |
+| 1.5-3m | Peer's base note fades in (exponential) |
+| 1-1.5m | First harmonic (octave) emerges |
+| 0.5-1m | Second harmonic (fifth) added |
+| < 0.5m | Third harmonic (major third) — full chord |
 
 ## Requirements
 
