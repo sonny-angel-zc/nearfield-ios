@@ -342,6 +342,32 @@
         const maxDetuneCents = 50;
         let currentDetune = 0;
 
+        // ==================== MULTI-PEER HARMONY ====================
+        // Pentatonic scale base frequencies for peer assignment
+        const pentatonicScale = [
+            { note: 'C4', freq: 261.63 },
+            { note: 'D4', freq: 293.66 },
+            { note: 'E4', freq: 329.63 },
+            { note: 'G4', freq: 392.00 },
+            { note: 'A4', freq: 440.00 },
+            { note: 'C5', freq: 523.25 },
+            { note: 'D5', freq: 587.33 },
+            { note: 'E5', freq: 659.25 }
+        ];
+
+        // Deterministic hash to assign peer a note index
+        function hashPeerName(name) {
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) {
+                hash = ((hash << 5) - hash) + name.charCodeAt(i);
+                hash |= 0;
+            }
+            return Math.abs(hash) % pentatonicScale.length;
+        }
+
+        // Per-peer audio state
+        let peerAudio = {};  // name → { osc, oscTriangle, gain, panner, harmonicOscs, harmonicGains }
+
         // ==================== NATIVE DATA ====================
         let nativeData = {
             nearestDistance: -1,
@@ -356,6 +382,7 @@
         let centerSphere;
         let peerSpheres = {};
         let distanceRings = [];
+        let peerLines = {};  // name → { line, material }
         let compassGroup;  // Group that rotates with device tilt
 
         const MAX_RANGE = 5;  // 5 meters max range
@@ -514,11 +541,17 @@
             const peers = nativeData.peers || {};
             const currentPeerNames = new Set(Object.keys(peers));
 
-            // Remove spheres for peers that left
+            // Remove spheres and lines for peers that left
             for (const name of Object.keys(peerSpheres)) {
                 if (!currentPeerNames.has(name)) {
                     compassGroup.remove(peerSpheres[name]);
                     delete peerSpheres[name];
+                    if (peerLines[name]) {
+                        compassGroup.remove(peerLines[name].line);
+                        peerLines[name].material.dispose();
+                        peerLines[name].geometry.dispose();
+                        delete peerLines[name];
+                    }
                 }
             }
 
@@ -583,6 +616,40 @@
                 // Scale based on proximity (closer = larger)
                 const scale = 0.8 + (1 - Math.min(peer.distance / MAX_RANGE, 1)) * 0.6;
                 sphere.scale.setScalar(scale);
+
+                // Connecting line between center and peer
+                if (!peerLines[name]) {
+                    const lineGeom = new THREE.BufferGeometry();
+                    const positions = new Float32Array(6); // 2 points × 3 coords
+                    lineGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                    const lineMat = new THREE.LineBasicMaterial({
+                        color: 0x4a9eff,
+                        transparent: true,
+                        opacity: 0.0
+                    });
+                    const line = new THREE.Line(lineGeom, lineMat);
+                    compassGroup.add(line);
+                    peerLines[name] = { line, material: lineMat, geometry: lineGeom };
+                }
+
+                // Update line endpoints
+                const pl = peerLines[name];
+                const posAttr = pl.geometry.getAttribute('position');
+                posAttr.array[0] = 0; posAttr.array[1] = 0; posAttr.array[2] = 0; // center
+                posAttr.array[3] = sphere.position.x;
+                posAttr.array[4] = sphere.position.y;
+                posAttr.array[5] = sphere.position.z;
+                posAttr.needsUpdate = true;
+
+                // Line brightness: exponential glow as distance decreases
+                const lineOpacity = Math.pow(1 - Math.min(peer.distance / MAX_RANGE, 1), 2) * 0.8;
+                pl.material.opacity = lineOpacity;
+                // Color shifts from blue to warm white when very close
+                const warmth = Math.pow(1 - Math.min(peer.distance / 1.5, 1), 2);
+                const r = 0x4a + Math.round((0xff - 0x4a) * warmth);
+                const g = 0x9e + Math.round((0xdd - 0x9e) * warmth);
+                const b = 0xff;
+                pl.material.color.setRGB(r / 255, g / 255, b / 255);
             }
         }
 
@@ -621,6 +688,11 @@
         }
 
         // ==================== AUDIO FUNCTIONS ====================
+        let masterGain = null;
+        let delayNode = null;
+        let delayFeedback = null;
+        let delayWet = null;
+
         function initAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -628,52 +700,183 @@
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
+            if (!masterGain) {
+                masterGain = audioCtx.createGain();
+                masterGain.gain.value = 0.8;
+
+                // Delay/reverb effect chain
+                delayNode = audioCtx.createDelay(1.0);
+                delayNode.delayTime.value = 0.3;
+                delayFeedback = audioCtx.createGain();
+                delayFeedback.gain.value = 0.25;
+                delayWet = audioCtx.createGain();
+                delayWet.gain.value = 0.15;
+
+                // Feedback loop: delay → feedback → delay
+                delayNode.connect(delayFeedback);
+                delayFeedback.connect(delayNode);
+                // Wet signal to output
+                delayNode.connect(delayWet);
+                delayWet.connect(audioCtx.destination);
+
+                // Dry signal
+                masterGain.connect(audioCtx.destination);
+                // Send dry to delay for wet mix
+                masterGain.connect(delayNode);
+            }
         }
 
-        function setupHarmonics() {
+        // Create layered oscillator (sine + soft triangle) for warmth
+        function createLayeredOsc(freq, gainNode) {
+            const sine = audioCtx.createOscillator();
+            sine.type = 'sine';
+            sine.frequency.value = freq;
+
+            const triangle = audioCtx.createOscillator();
+            triangle.type = 'triangle';
+            triangle.frequency.value = freq;
+
+            const triGain = audioCtx.createGain();
+            triGain.gain.value = 0.15; // Subtle triangle blend
+
+            sine.connect(gainNode);
+            triangle.connect(triGain);
+            triGain.connect(gainNode);
+
+            sine.start();
+            triangle.start();
+
+            return { sine, triangle, triGain };
+        }
+
+        // Exponential proximity mapping for natural fade-in
+        function exponentialGain(distance, maxDist, maxGain) {
+            if (distance < 0 || distance > maxDist) return 0;
+            const normalized = 1 - (distance / maxDist);
+            // Exponential curve: quiet until close, then ramps up fast
+            return Math.pow(normalized, 2.5) * maxGain;
+        }
+
+        function setupPeerAudio(peerName, peer) {
+            if (peerAudio[peerName]) return; // Already set up
+
+            const noteIdx = hashPeerName(peerName);
+            const baseFreq = pentatonicScale[noteIdx].freq;
+
+            // Per-peer gain
+            const gain = audioCtx.createGain();
+            gain.gain.value = 0;
+
+            // Per-peer stereo panner
+            const panner = audioCtx.createStereoPanner();
+            panner.pan.value = 0;
+
+            // Chain: oscillators → gain → panner → master
+            gain.connect(panner);
+            panner.connect(masterGain);
+
+            // Create layered base oscillator
+            const { sine: osc, triangle: oscTriangle, triGain } = createLayeredOsc(baseFreq, gain);
+
+            // Create harmonic oscillators for this peer
             const harmonicRatios = [2, 1.5, 1.25];
-            harmonicRatios.forEach((ratio, i) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.value = notes[currentNote] * ratio;
-                gain.gain.value = 0;
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start();
-                harmonicOscs.push(osc);
-                harmonicGains.push(gain);
+            const peerHarmonicOscs = [];
+            const peerHarmonicGains = [];
+
+            harmonicRatios.forEach(ratio => {
+                const hGain = audioCtx.createGain();
+                hGain.gain.value = 0;
+                hGain.connect(panner);
+
+                const { sine: hOsc, triangle: hTri } = createLayeredOsc(baseFreq * ratio, hGain);
+                peerHarmonicOscs.push({ sine: hOsc, triangle: hTri });
+                peerHarmonicGains.push(hGain);
             });
+
+            peerAudio[peerName] = {
+                osc, oscTriangle, triGain, gain, panner,
+                harmonicOscs: peerHarmonicOscs,
+                harmonicGains: peerHarmonicGains,
+                baseFreq, noteIdx
+            };
+        }
+
+        function teardownPeerAudio(peerName) {
+            const pa = peerAudio[peerName];
+            if (!pa) return;
+            try { pa.osc.stop(); } catch(e) {}
+            try { pa.oscTriangle.stop(); } catch(e) {}
+            pa.harmonicOscs.forEach(h => {
+                try { h.sine.stop(); } catch(e) {}
+                try { h.triangle.stop(); } catch(e) {}
+            });
+            pa.gain.disconnect();
+            pa.panner.disconnect();
+            delete peerAudio[peerName];
+        }
+
+        function updatePeerAudio() {
+            if (!isPlaying || !audioCtx) return;
+
+            const peers = nativeData.peers || {};
+            const currentPeerNames = new Set(Object.keys(peers));
+
+            // Remove audio for peers that left
+            for (const name of Object.keys(peerAudio)) {
+                if (!currentPeerNames.has(name)) {
+                    teardownPeerAudio(name);
+                }
+            }
+
+            // Update or create audio for current peers
+            for (const [name, peer] of Object.entries(peers)) {
+                if (!peer || peer.distance < 0) continue;
+
+                setupPeerAudio(name, peer);
+                const pa = peerAudio[name];
+                const t = audioCtx.currentTime;
+
+                // Exponential volume based on distance
+                const baseGain = exponentialGain(peer.distance, 3.0, 0.2);
+                pa.gain.gain.setTargetAtTime(baseGain, t, 0.1);
+
+                // Spatial panning from direction data
+                let panValue = 0;
+                if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
+                    // horizontalAngle: radians, negative = left, positive = right
+                    panValue = Math.max(-1, Math.min(1, Math.sin(peer.horizontalAngle)));
+                } else if (peer.directionX !== undefined) {
+                    // directionX: negative = left, positive = right (unit vector component)
+                    panValue = Math.max(-1, Math.min(1, peer.directionX));
+                }
+                pa.panner.pan.setTargetAtTime(panValue, t, 0.05);
+
+                // Harmonic gains with exponential proximity curve
+                const harmonicRatios = [2, 1.5, 1.25];
+                pa.harmonicGains.forEach((hGain, i) => {
+                    const threshold = (i + 1) * 0.5; // Unlock at 1.5m, 1.0m, 0.5m
+                    const maxDist = 2.0 - threshold;
+                    const dist = peer.distance - (2.0 - maxDist - threshold);
+                    const level = exponentialGain(peer.distance, 2.0 - threshold * 0.5, 0.12);
+                    const thresholdLevel = peer.distance < (2.0 - threshold * 0.5) ? level : 0;
+                    hGain.gain.setTargetAtTime(thresholdLevel, t, 0.1);
+                });
+            }
+        }
+
+        // Legacy functions kept for compatibility
+        function setupHarmonics() {
+            // Now handled per-peer in updatePeerAudio
         }
 
         function stopHarmonics() {
-            harmonicOscs.forEach(osc => { try { osc.stop(); } catch(e) {} });
-            harmonicOscs = [];
-            harmonicGains = [];
+            for (const name of Object.keys(peerAudio)) {
+                teardownPeerAudio(name);
+            }
         }
 
         function updateHarmonics() {
-            if (!isPlaying || harmonicGains.length === 0) return;
-
-            harmonicOscs.forEach((osc, i) => {
-                const ratios = [2, 1.5, 1.25];
-                osc.frequency.value = notes[currentNote] * ratios[i];
-            });
-
-            const distance = nativeData.nearestDistance;
-            if (distance < 0 || distance > 2) {
-                harmonicGains.forEach(g => g.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1));
-                return;
-            }
-
-            const proximityLevel = 1 - (distance / 2);
-            const maxHarmonicGain = 0.25;
-
-            harmonicGains.forEach((gain, i) => {
-                const threshold = (i + 1) * 0.25;
-                const level = Math.max(0, (proximityLevel - threshold) / (1 - threshold));
-                gain.gain.setTargetAtTime(level * maxHarmonicGain, audioCtx.currentTime, 0.1);
-            });
+            updatePeerAudio();
         }
 
         function updateTiltDetune() {
@@ -683,13 +886,11 @@
             const normalizedTilt = Math.max(-1, Math.min(1, tiltX / 0.5));
             currentDetune = normalizedTilt * maxDetuneCents;
 
-            // Apply detune to root oscillator
+            // Apply detune to root oscillators
             phoneOsc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
-
-            // Apply same detune to all harmonics
-            harmonicOscs.forEach(osc => {
-                osc.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
-            });
+            if (phoneOscTriangle) {
+                phoneOscTriangle.detune.setTargetAtTime(currentDetune, audioCtx.currentTime, 0.05);
+            }
 
             const detuneEl = document.getElementById('detuneIndicator');
             if (Math.abs(currentDetune) > 1) {
@@ -698,6 +899,9 @@
                 detuneEl.textContent = '';
             }
         }
+
+        let phoneOscTriangle = null;
+        let phoneTriGain = null;
 
         function togglePlay() {
             initAudio();
@@ -709,6 +913,7 @@
                 }
                 setTimeout(() => {
                     if (phoneOsc) { phoneOsc.stop(); phoneOsc = null; }
+                    if (phoneOscTriangle) { phoneOscTriangle.stop(); phoneOscTriangle = null; }
                 }, 300);
                 stopHarmonics();
                 isPlaying = false;
@@ -716,15 +921,26 @@
                 btn.innerHTML = 'TAP TO<br>PLAY';
                 document.getElementById('detuneIndicator').textContent = '';
             } else {
-                phoneOsc = audioCtx.createOscillator();
                 phoneGain = audioCtx.createGain();
+                phoneGain.gain.value = 0.7;
+                phoneGain.connect(masterGain);
+
+                // Layered oscillators: sine + soft triangle
+                phoneOsc = audioCtx.createOscillator();
                 phoneOsc.type = 'sine';
                 phoneOsc.frequency.value = notes[currentNote];
-                phoneGain.gain.value = 0.8;
                 phoneOsc.connect(phoneGain);
-                phoneGain.connect(audioCtx.destination);
                 phoneOsc.start();
-                setupHarmonics();
+
+                phoneOscTriangle = audioCtx.createOscillator();
+                phoneOscTriangle.type = 'triangle';
+                phoneOscTriangle.frequency.value = notes[currentNote];
+                phoneTriGain = audioCtx.createGain();
+                phoneTriGain.gain.value = 0.15;
+                phoneOscTriangle.connect(phoneTriGain);
+                phoneTriGain.connect(phoneGain);
+                phoneOscTriangle.start();
+
                 isPlaying = true;
                 btn.classList.add('playing');
                 btn.innerHTML = 'PLAYING';
@@ -832,6 +1048,9 @@
                     updateDisplay();
                     if (phoneOsc) {
                         phoneOsc.frequency.setTargetAtTime(notes[currentNote], audioCtx.currentTime, 0.05);
+                    }
+                    if (phoneOscTriangle) {
+                        phoneOscTriangle.frequency.setTargetAtTime(notes[currentNote], audioCtx.currentTime, 0.05);
                     }
                     updateHarmonics();
                 });
