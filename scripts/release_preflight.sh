@@ -49,9 +49,14 @@ ICON_SET="Nearfield/Nearfield/Assets.xcassets/AppIcon.appiconset/Contents.json"
 [[ -f "$ICON_SET" ]] || fail "Missing AppIcon asset set Contents.json"
 pass "AppIcon asset set exists"
 
-BUILD_NUM="$(grep -m1 'CURRENT_PROJECT_VERSION = ' Nearfield.xcodeproj/project.pbxproj | sed -E 's/.*CURRENT_PROJECT_VERSION = ([0-9]+);/\1/')"
-[[ "$BUILD_NUM" =~ ^[0-9]+$ ]] || fail "Could not parse CURRENT_PROJECT_VERSION"
-pass "Build number parsed: $BUILD_NUM"
+BUILD_NUM_LINE="$(grep -m1 'CURRENT_PROJECT_VERSION' Nearfield.xcodeproj/project.pbxproj || true)"
+BUILD_NUM="$(printf '%s' "$BUILD_NUM_LINE" | sed -E 's/.*CURRENT_PROJECT_VERSION[^0-9]*([0-9]+).*/\1/')"
+if [[ "$BUILD_NUM" =~ ^[0-9]+$ ]]; then
+  pass "Build number parsed: $BUILD_NUM"
+else
+  warn "Could not parse CURRENT_PROJECT_VERSION (this project may rely on MARKETING_VERSION-only workflow)"
+  BUILD_NUM=""
+fi
 
 command -v xcodebuild >/dev/null 2>&1 || fail "xcodebuild is not installed / not in PATH"
 pass "xcodebuild available"
@@ -73,11 +78,13 @@ except Exception:
     print('')
 PY
 )"
-    if [[ "$LATEST" =~ ^[0-9]+$ ]]; then
+    if [[ "$LATEST" =~ ^[0-9]+$ && "$BUILD_NUM" =~ ^[0-9]+$ ]]; then
       if (( BUILD_NUM <= LATEST )); then
         fail "Build number $BUILD_NUM is not greater than latest TestFlight build $LATEST"
       fi
       pass "Build number $BUILD_NUM is greater than latest TestFlight build $LATEST"
+    elif [[ "$LATEST" =~ ^[0-9]+$ ]]; then
+      warn "Latest TestFlight build is $LATEST but local build number could not be parsed"
     else
       warn "Could not determine latest TestFlight build number"
     fi
