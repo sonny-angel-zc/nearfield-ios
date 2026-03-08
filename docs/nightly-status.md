@@ -21,3 +21,15 @@
 - [2026-03-08 09:12:47 PDT] Preflight passed
 - [2026-03-08 09:12:47 PDT] Picked task grainfield-primary-input-plumb (P0) owner=overnight
 - [2026-03-08 09:12:47 PDT] Marked queue task done: grainfield-primary-input-plumb
+- [2026-03-08 09:12:47 PDT] Committed task changes: overnight: grainfield-primary-input-plumb
+- [2026-03-08 09:12:48 PDT] Archive failed (rc=1). See /tmp/nearfield-archive.log
+- [2026-03-08 09:42:41 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:42:42 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:42:47 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:42:47 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:42:55 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:42:55 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:42:57 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:42:57 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:53:37 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:53:37 PDT] Preflight failed. See /tmp/nearfield-preflight.log

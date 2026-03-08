@@ -21,10 +21,11 @@ if [[ ! "$BRANCH" =~ $ALLOWED_REGEX ]]; then
 fi
 pass "Branch check ($BRANCH)"
 
-if [[ -n "$(git status --porcelain)" ]]; then
+DIRTY_NON_EPHEMERAL="$(git status --porcelain | grep -vE '^(\?\?| M|M ) (docs/nightly-status.md|\.testflight-status\.json)$' || true)"
+if [[ -n "$DIRTY_NON_EPHEMERAL" ]]; then
   fail "Working tree is dirty. Commit/stash changes before release build."
 fi
-pass "Working tree is clean"
+pass "Working tree is clean (ignoring ephemeral status files)"
 
 if git remote get-url origin >/dev/null 2>&1; then
   git fetch origin -q || true
