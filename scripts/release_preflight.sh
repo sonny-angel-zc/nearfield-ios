@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+RED='\033[0;31m'
+GRN='\033[0;32m'
+YLW='\033[0;33m'
+NC='\033[0m'
+
+fail() { echo -e "${RED}✗ $*${NC}"; exit 1; }
+pass() { echo -e "${GRN}✓ $*${NC}"; }
+warn() { echo -e "${YLW}! $*${NC}"; }
+
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+ALLOWED_REGEX="${ALLOWED_RELEASE_BRANCH_REGEX:-^(main|release/.+)$}"
+
+if [[ ! "$BRANCH" =~ $ALLOWED_REGEX ]]; then
+  fail "Release must be built from main/release branch. Current: $BRANCH"
+fi
+pass "Branch check ($BRANCH)"
+
+if [[ -n "$(git status --porcelain)" ]]; then
+  fail "Working tree is dirty. Commit/stash changes before release build."
+fi
+pass "Working tree is clean"
+
+if git remote get-url origin >/dev/null 2>&1; then
+  git fetch origin -q || true
+  if git rev-parse --verify "origin/$BRANCH" >/dev/null 2>&1; then
+    LOCAL_SHA="$(git rev-parse HEAD)"
+    REMOTE_SHA="$(git rev-parse "origin/$BRANCH")"
+    if [[ "$LOCAL_SHA" != "$REMOTE_SHA" ]]; then
+      warn "HEAD differs from origin/$BRANCH (local=$LOCAL_SHA remote=$REMOTE_SHA)"
+    else
+      pass "HEAD matches origin/$BRANCH"
+    fi
+  fi
+fi
+
+INFO_PLIST="Nearfield/Nearfield/Info.plist"
+[[ -f "$INFO_PLIST" ]] || fail "Missing $INFO_PLIST"
+
+grep -q "<key>CFBundleIconName</key>" "$INFO_PLIST" || fail "CFBundleIconName missing in Info.plist"
+pass "Info.plist has CFBundleIconName"
+
+ICON_SET="Nearfield/Nearfield/Assets.xcassets/AppIcon.appiconset/Contents.json"
+[[ -f "$ICON_SET" ]] || fail "Missing AppIcon asset set Contents.json"
+pass "AppIcon asset set exists"
+
+BUILD_NUM="$(grep -m1 'CURRENT_PROJECT_VERSION = ' Nearfield.xcodeproj/project.pbxproj | sed -E 's/.*CURRENT_PROJECT_VERSION = ([0-9]+);/\1/')"
+[[ "$BUILD_NUM" =~ ^[0-9]+$ ]] || fail "Could not parse CURRENT_PROJECT_VERSION"
+pass "Build number parsed: $BUILD_NUM"
+
+# Optional: compare against latest uploaded build in ASC if credentials are available
+if [[ -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_ID:-}" && -n "${ASC_PRIVATE_KEY_PATH:-}" ]]; then
+  if OUT="$("$ROOT/scripts/testflight_status.sh" 2>/dev/null || true)"; then
+    LATEST="$(python3 - <<'PY' "$OUT"
+import json,sys
+try:
+    j=json.loads(sys.argv[1])
+    print(j.get('buildNumber') or '')
+except Exception:
+    print('')
+PY
+)"
+    if [[ "$LATEST" =~ ^[0-9]+$ ]]; then
+      if (( BUILD_NUM <= LATEST )); then
+        fail "Build number $BUILD_NUM is not greater than latest TestFlight build $LATEST"
+      fi
+      pass "Build number $BUILD_NUM is greater than latest TestFlight build $LATEST"
+    else
+      warn "Could not determine latest TestFlight build number"
+    fi
+  fi
+else
+  warn "ASC credentials not set; skipping TestFlight build-number comparison"
+fi
+
+pass "Release preflight passed"
