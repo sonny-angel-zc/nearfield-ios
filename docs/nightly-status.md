@@ -33,3 +33,7 @@
 - [2026-03-08 09:42:57 PDT] Preflight failed. See /tmp/nearfield-preflight.log
 - [2026-03-08 09:53:37 PDT] Overnight loop start (branch=sonny/setup-check)
 - [2026-03-08 09:53:37 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:54:12 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:54:12 PDT] Preflight passed
+- [2026-03-08 09:54:12 PDT] Picked task grainfield-repeater-routing (P1) owner=overnight
+- [2026-03-08 09:54:12 PDT] Marked queue task done: grainfield-repeater-routing
