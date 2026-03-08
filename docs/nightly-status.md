@@ -37,3 +37,11 @@
 - [2026-03-08 09:54:12 PDT] Preflight passed
 - [2026-03-08 09:54:12 PDT] Picked task grainfield-repeater-routing (P1) owner=overnight
 - [2026-03-08 09:54:12 PDT] Marked queue task done: grainfield-repeater-routing
+- [2026-03-08 09:54:12 PDT] Committed task changes: overnight: grainfield-repeater-routing
+- [2026-03-08 09:54:22 PDT] Archive succeeded
+- [2026-03-08 09:54:22 PDT] Upload not completed via CLI (rc=3). Follow fallback in scripts/upload_testflight.sh
+- [2026-03-08 09:54:22 PDT] Overnight loop completed
+- [2026-03-08 10:12:41 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 10:12:41 PDT] Preflight passed
+- [2026-03-08 10:12:41 PDT] Picked task fallback-nearfield-behavior (P1) owner=overnight
+- [2026-03-08 10:12:41 PDT] Marked queue task done: fallback-nearfield-behavior
