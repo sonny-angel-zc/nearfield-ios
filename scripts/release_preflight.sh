@@ -53,6 +53,14 @@ BUILD_NUM="$(grep -m1 'CURRENT_PROJECT_VERSION = ' Nearfield.xcodeproj/project.p
 [[ "$BUILD_NUM" =~ ^[0-9]+$ ]] || fail "Could not parse CURRENT_PROJECT_VERSION"
 pass "Build number parsed: $BUILD_NUM"
 
+command -v xcodebuild >/dev/null 2>&1 || fail "xcodebuild is not installed / not in PATH"
+pass "xcodebuild available"
+
+if [[ -f "$ROOT/docs/app-priority-queue.md" ]]; then
+  grep -Eq '^- \[ \] P[0-2] \|' "$ROOT/docs/app-priority-queue.md" || warn "No queued tasks found in docs/app-priority-queue.md"
+  pass "Task queue file present"
+fi
+
 # Optional: compare against latest uploaded build in ASC if credentials are available
 if [[ -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_ID:-}" && -n "${ASC_PRIVATE_KEY_PATH:-}" ]]; then
   if OUT="$("$ROOT/scripts/testflight_status.sh" 2>/dev/null || true)"; then
