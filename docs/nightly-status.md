@@ -45,3 +45,11 @@
 - [2026-03-08 10:12:41 PDT] Preflight passed
 - [2026-03-08 10:12:41 PDT] Picked task fallback-nearfield-behavior (P1) owner=overnight
 - [2026-03-08 10:12:41 PDT] Marked queue task done: fallback-nearfield-behavior
+- [2026-03-08 10:12:41 PDT] Committed task changes: overnight: fallback-nearfield-behavior
+- [2026-03-08 10:12:49 PDT] Archive succeeded
+- [2026-03-08 10:12:49 PDT] Upload not completed via CLI (rc=3). Follow fallback in scripts/upload_testflight.sh
+- [2026-03-08 10:12:49 PDT] Overnight loop completed
+- [2026-03-08 10:42:42 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 10:42:42 PDT] Preflight passed
+- [2026-03-08 10:42:42 PDT] Picked task ux-polish-debug-surface (P1) owner=overnight
+- [2026-03-08 10:42:42 PDT] Marked queue task done: ux-polish-debug-surface
