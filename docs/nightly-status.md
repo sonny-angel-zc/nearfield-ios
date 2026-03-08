@@ -7,3 +7,7 @@
 - Next: run overnight loop with real task commands and Apple auth available.
 - [2026-03-08 09:07:23 PDT] Overnight loop start (branch=sonny/setup-check)
 - [2026-03-08 09:07:23 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:08:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:08:08 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-08 09:09:27 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 09:09:27 PDT] Preflight failed. See /tmp/nearfield-preflight.log
