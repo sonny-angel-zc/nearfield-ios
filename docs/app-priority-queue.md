@@ -7,7 +7,7 @@
 
 ## Ready
 - [x] P0 | overnight | grainfield-data-model | echo "create Grainfield session model TODO in code/doc"
-- [ ] P0 | overnight | grainfield-primary-input-plumb | echo "wire primary node input path behind feature flag"
+- [x] P0 | overnight | grainfield-primary-input-plumb | echo "wire primary node input path behind feature flag"
 - [ ] P1 | overnight | grainfield-repeater-routing | echo "add repeater node routing + transforms"
 - [ ] P1 | overnight | fallback-nearfield-behavior | echo "ensure fallback to current nearfield audio path"
 - [ ] P1 | overnight | ux-polish-debug-surface | echo "improve diagnostics: mode, peers, active route"
