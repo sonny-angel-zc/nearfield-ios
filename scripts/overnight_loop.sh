@@ -68,6 +68,9 @@ if [[ $task_rc -ne 0 ]]; then
   exit 2
 fi
 
+mark_done "$raw_line"
+log "Marked queue task done: $slug"
+
 if [[ -n "$(git status --porcelain)" ]]; then
   git add -A
   git commit -m "overnight: $slug"
@@ -75,9 +78,6 @@ if [[ -n "$(git status --porcelain)" ]]; then
 else
   log "Task $slug made no repo changes"
 fi
-
-mark_done "$raw_line"
-log "Marked queue task done: $slug"
 
 if [[ "$ENABLE_BUILD" == "1" ]]; then
   set +e

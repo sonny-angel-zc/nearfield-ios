@@ -14,3 +14,6 @@
 - [2026-03-08 09:10:10 PDT] Overnight loop start (branch=sonny/setup-check)
 - [2026-03-08 09:10:10 PDT] Preflight passed
 - [2026-03-08 09:10:10 PDT] Picked task grainfield-data-model (P0) owner=overnight
+- [2026-03-08 09:10:10 PDT] Committed task changes: overnight: grainfield-data-model
+- [2026-03-08 09:10:10 PDT] Marked queue task done: grainfield-data-model
+- [2026-03-08 09:10:10 PDT] Overnight loop completed
