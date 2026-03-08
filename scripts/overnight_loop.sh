@@ -41,12 +41,13 @@ PY
 mkdir -p "$(dirname "$STATUS_FILE")"
 [[ -f "$STATUS_FILE" ]] || echo "# Nearfield Nightly Status" > "$STATUS_FILE"
 
-log "Overnight loop start (branch=$BRANCH)"
-
 if ! "$ROOT/scripts/release_preflight.sh" >/tmp/nearfield-preflight.log 2>&1; then
+  log "Overnight loop start (branch=$BRANCH)"
   log "Preflight failed. See /tmp/nearfield-preflight.log"
   exit 1
 fi
+
+log "Overnight loop start (branch=$BRANCH)"
 log "Preflight passed"
 
 if ! task_row="$(pick_task)"; then
