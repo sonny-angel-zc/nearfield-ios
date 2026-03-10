@@ -53,3 +53,364 @@
 - [2026-03-08 10:42:42 PDT] Preflight passed
 - [2026-03-08 10:42:42 PDT] Picked task ux-polish-debug-surface (P1) owner=overnight
 - [2026-03-08 10:42:42 PDT] Marked queue task done: ux-polish-debug-surface
+- [2026-03-08 10:42:42 PDT] Committed task changes: overnight: ux-polish-debug-surface
+- [2026-03-08 10:42:48 PDT] Archive succeeded
+- [2026-03-08 10:42:48 PDT] Upload not completed via CLI (rc=3). Follow fallback in scripts/upload_testflight.sh
+- [2026-03-08 10:42:48 PDT] Overnight loop completed
+- [2026-03-08 11:12:43 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 11:12:43 PDT] Preflight passed
+- [2026-03-08 11:12:43 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 11:12:47 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 11:12:47 PDT] Preflight passed
+- [2026-03-08 11:12:47 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 11:42:42 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 11:42:42 PDT] Preflight passed
+- [2026-03-08 11:42:42 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 12:12:49 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 12:12:49 PDT] Preflight passed
+- [2026-03-08 12:12:49 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 12:42:43 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 12:42:43 PDT] Preflight passed
+- [2026-03-08 12:42:43 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 13:12:42 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 13:12:42 PDT] Preflight passed
+- [2026-03-08 13:12:42 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 14:13:49 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 14:13:49 PDT] Preflight passed
+- [2026-03-08 14:13:49 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 14:13:56 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 14:13:56 PDT] Preflight passed
+- [2026-03-08 14:13:56 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 15:15:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 15:15:03 PDT] Preflight passed
+- [2026-03-08 15:15:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 15:15:06 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 15:15:06 PDT] Preflight passed
+- [2026-03-08 15:15:06 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 16:16:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 16:16:04 PDT] Preflight passed
+- [2026-03-08 16:16:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 16:16:12 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 16:16:12 PDT] Preflight passed
+- [2026-03-08 16:16:12 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 16:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 16:46:02 PDT] Preflight passed
+- [2026-03-08 16:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 16:46:07 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 16:46:08 PDT] Preflight passed
+- [2026-03-08 16:46:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 17:16:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 17:16:02 PDT] Preflight passed
+- [2026-03-08 17:16:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 17:16:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 17:16:09 PDT] Preflight passed
+- [2026-03-08 17:16:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 17:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 17:46:02 PDT] Preflight passed
+- [2026-03-08 17:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 17:46:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 17:46:08 PDT] Preflight passed
+- [2026-03-08 17:46:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 18:16:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 18:16:02 PDT] Preflight passed
+- [2026-03-08 18:16:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 18:16:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 18:16:08 PDT] Preflight passed
+- [2026-03-08 18:16:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 18:16:13 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 18:16:13 PDT] Preflight passed
+- [2026-03-08 18:16:13 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 18:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 18:46:02 PDT] Preflight passed
+- [2026-03-08 18:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 18:46:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 18:46:09 PDT] Preflight passed
+- [2026-03-08 18:46:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 19:16:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 19:16:02 PDT] Preflight passed
+- [2026-03-08 19:16:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 19:16:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 19:16:09 PDT] Preflight passed
+- [2026-03-08 19:16:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 19:46:01 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 19:46:01 PDT] Preflight passed
+- [2026-03-08 19:46:01 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 19:46:06 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 19:46:06 PDT] Preflight passed
+- [2026-03-08 19:46:06 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 20:16:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 20:16:03 PDT] Preflight passed
+- [2026-03-08 20:16:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 20:16:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 20:16:09 PDT] Preflight passed
+- [2026-03-08 20:16:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 20:46:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 20:46:04 PDT] Preflight passed
+- [2026-03-08 20:46:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 20:46:13 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 20:46:13 PDT] Preflight passed
+- [2026-03-08 20:46:13 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 21:16:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 21:16:04 PDT] Preflight passed
+- [2026-03-08 21:16:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 21:16:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 21:16:08 PDT] Preflight passed
+- [2026-03-08 21:16:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 21:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 21:46:02 PDT] Preflight passed
+- [2026-03-08 21:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 21:46:05 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 21:46:05 PDT] Preflight passed
+- [2026-03-08 21:46:05 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 22:16:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 22:16:03 PDT] Preflight passed
+- [2026-03-08 22:16:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 22:16:06 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 22:16:06 PDT] Preflight passed
+- [2026-03-08 22:16:06 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 22:46:01 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 22:46:01 PDT] Preflight passed
+- [2026-03-08 22:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 22:46:06 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 22:46:06 PDT] Preflight passed
+- [2026-03-08 22:46:06 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 23:16:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 23:16:04 PDT] Preflight passed
+- [2026-03-08 23:16:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 23:16:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 23:16:08 PDT] Preflight passed
+- [2026-03-08 23:16:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 23:46:06 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 23:46:06 PDT] Preflight passed
+- [2026-03-08 23:46:06 PDT] No pending task in queue; exiting cleanly
+- [2026-03-08 23:46:12 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-08 23:46:12 PDT] Preflight passed
+- [2026-03-08 23:46:12 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 00:16:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 00:16:02 PDT] Preflight passed
+- [2026-03-09 00:16:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 00:16:11 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 00:16:11 PDT] Preflight passed
+- [2026-03-09 00:16:11 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 00:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 00:46:03 PDT] Preflight passed
+- [2026-03-09 00:46:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 01:16:05 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 01:16:05 PDT] Preflight passed
+- [2026-03-09 01:16:05 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 01:16:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 01:16:09 PDT] Preflight passed
+- [2026-03-09 01:16:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 01:46:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 01:46:04 PDT] Preflight passed
+- [2026-03-09 01:46:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 02:16:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 02:16:04 PDT] Preflight passed
+- [2026-03-09 02:16:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 02:16:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 02:16:10 PDT] Preflight passed
+- [2026-03-09 02:16:10 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 02:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 02:46:02 PDT] Preflight passed
+- [2026-03-09 02:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 02:46:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 02:46:08 PDT] Preflight passed
+- [2026-03-09 02:46:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 03:16:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 03:16:04 PDT] Preflight passed
+- [2026-03-09 03:16:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 03:16:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 03:16:08 PDT] Preflight passed
+- [2026-03-09 03:16:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 03:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 03:46:02 PDT] Preflight passed
+- [2026-03-09 03:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 03:46:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 03:46:08 PDT] Preflight passed
+- [2026-03-09 03:46:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 04:16:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 04:16:03 PDT] Preflight passed
+- [2026-03-09 04:16:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 04:16:07 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 04:16:07 PDT] Preflight passed
+- [2026-03-09 04:16:07 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 04:46:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 04:46:03 PDT] Preflight passed
+- [2026-03-09 04:46:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 04:46:07 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 04:46:07 PDT] Preflight passed
+- [2026-03-09 04:46:07 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 05:16:12 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 05:16:12 PDT] Preflight passed
+- [2026-03-09 05:16:12 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 05:16:17 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 05:16:17 PDT] Preflight passed
+- [2026-03-09 05:16:17 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 05:46:02 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 05:46:02 PDT] Preflight passed
+- [2026-03-09 05:46:02 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 05:46:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 05:46:10 PDT] Preflight passed
+- [2026-03-09 05:46:10 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 06:16:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 06:16:03 PDT] Preflight passed
+- [2026-03-09 06:16:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 06:16:21 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 06:16:21 PDT] Preflight passed
+- [2026-03-09 06:16:21 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 06:46:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 06:46:03 PDT] Preflight passed
+- [2026-03-09 06:46:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 06:46:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 06:46:10 PDT] Preflight passed
+- [2026-03-09 06:46:10 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 07:46:26 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 07:46:26 PDT] Preflight passed
+- [2026-03-09 07:46:26 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 07:46:34 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 07:46:34 PDT] Preflight passed
+- [2026-03-09 07:46:34 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 08:47:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 08:47:10 PDT] Preflight passed
+- [2026-03-09 08:47:10 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 08:47:14 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 08:47:14 PDT] Preflight passed
+- [2026-03-09 08:47:14 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 09:48:00 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 09:48:00 PDT] Preflight passed
+- [2026-03-09 09:48:00 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 09:48:07 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 09:48:07 PDT] Preflight passed
+- [2026-03-09 09:48:07 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 10:48:32 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 10:48:32 PDT] Preflight passed
+- [2026-03-09 10:48:32 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 11:48:56 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 11:48:56 PDT] Preflight passed
+- [2026-03-09 11:48:56 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 11:49:03 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 11:49:03 PDT] Preflight passed
+- [2026-03-09 11:49:03 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 12:49:26 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 12:49:26 PDT] Preflight passed
+- [2026-03-09 12:49:26 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 12:49:45 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 12:49:45 PDT] Preflight passed
+- [2026-03-09 12:49:45 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 13:50:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 13:50:04 PDT] Preflight passed
+- [2026-03-09 13:50:05 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 13:50:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 13:50:08 PDT] Preflight passed
+- [2026-03-09 13:50:08 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 14:50:46 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 14:50:46 PDT] Preflight passed
+- [2026-03-09 14:50:46 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 14:50:50 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 14:50:50 PDT] Preflight passed
+- [2026-03-09 14:50:50 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 15:51:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 15:51:04 PDT] Preflight passed
+- [2026-03-09 15:51:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 15:51:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 15:51:09 PDT] Preflight passed
+- [2026-03-09 15:51:09 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 16:51:32 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 16:51:32 PDT] Preflight passed
+- [2026-03-09 16:51:32 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 17:51:58 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 17:51:58 PDT] Preflight passed
+- [2026-03-09 17:51:58 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 17:52:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 17:52:04 PDT] Preflight passed
+- [2026-03-09 17:52:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 18:52:24 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 18:52:24 PDT] Preflight passed
+- [2026-03-09 18:52:24 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 18:52:29 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 18:52:29 PDT] Preflight passed
+- [2026-03-09 18:52:29 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 19:52:47 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 19:52:47 PDT] Preflight passed
+- [2026-03-09 19:52:47 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 19:52:53 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 19:52:53 PDT] Preflight passed
+- [2026-03-09 19:52:53 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 20:53:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 20:53:10 PDT] Preflight passed
+- [2026-03-09 20:53:10 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 20:53:17 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 20:53:17 PDT] Preflight passed
+- [2026-03-09 20:53:17 PDT] No pending task in queue; exiting cleanly
+- [2026-03-09 21:53:52 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 21:53:52 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 21:53:55 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 21:53:55 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 21:54:01 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 21:54:01 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 22:54:19 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 22:54:19 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 22:54:22 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 22:54:22 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 22:54:30 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 22:54:30 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 23:54:48 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 23:54:48 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 23:54:51 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 23:54:51 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-09 23:54:53 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-09 23:54:53 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 00:55:08 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 00:55:08 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 00:55:13 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 00:55:13 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 00:55:19 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 00:55:19 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 01:55:34 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 01:55:34 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 01:55:41 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 01:55:41 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 02:56:36 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 02:56:36 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 02:56:41 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 02:56:41 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 03:57:09 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 03:57:09 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 03:57:15 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 03:57:15 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 04:57:39 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 04:57:39 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 04:57:42 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 04:57:42 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 04:57:58 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 04:57:58 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 04:58:00 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 04:58:00 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 05:58:16 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 05:58:16 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 05:58:20 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 05:58:20 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 06:59:01 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 06:59:01 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 06:59:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 06:59:04 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 06:59:07 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 06:59:07 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 07:59:20 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 07:59:20 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 07:59:23 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 07:59:23 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 08:59:52 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 08:59:52 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 08:59:59 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 08:59:59 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:00:10 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:00:10 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:29:44 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:29:44 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:29:47 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:29:47 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:29:50 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:29:50 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:29:57 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:29:57 PDT] Preflight failed. See /tmp/nearfield-preflight.log

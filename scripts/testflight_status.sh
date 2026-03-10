@@ -39,7 +39,7 @@ JWT="$unsigned.$sig"
 
 api_get() {
   local url="$1"
-  curl -fsSL "$url" \
+  curl -g -fsSL "$url" \
     -H "Authorization: Bearer $JWT" \
     -H 'Content-Type: application/json'
 }

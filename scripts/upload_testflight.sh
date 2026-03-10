@@ -5,11 +5,29 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 IPA_PATH="${IPA_PATH:-$ROOT/build/export/Nearfield.ipa}"
+ARCHIVE_PATH="${ARCHIVE_PATH:-$ROOT/build/Nearfield.xcarchive}"
+EXPORT_PATH="${EXPORT_PATH:-$ROOT/build/export}"
+EXPORT_OPTIONS_PLIST="${EXPORT_OPTIONS_PLIST:-$ROOT/build/ExportOptions.plist}"
 APPLE_ID="${APPLE_ID:-}"
 APP_PASSWORD="${APP_PASSWORD:-}"
 ASC_API_KEY="${ASC_API_KEY_PATH:-${ASC_PRIVATE_KEY_PATH:-}}"
 ASC_KEY_ID="${ASC_KEY_ID:-}"
 ASC_ISSUER_ID="${ASC_ISSUER_ID:-}"
+
+if [[ ! -f "$IPA_PATH" ]]; then
+  if [[ -d "$ARCHIVE_PATH" && -f "$EXPORT_OPTIONS_PLIST" ]]; then
+    echo "IPA missing; exporting from archive first..."
+    mkdir -p "$EXPORT_PATH"
+    xcodebuild -exportArchive \
+      -archivePath "$ARCHIVE_PATH" \
+      -exportPath "$EXPORT_PATH" \
+      -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" \
+      -allowProvisioningUpdates >/tmp/nearfield-export.log 2>&1 || {
+        echo "ERROR: Failed exporting IPA from archive (see /tmp/nearfield-export.log)" >&2
+        exit 2
+      }
+  fi
+fi
 
 if [[ ! -f "$IPA_PATH" ]]; then
   echo "ERROR: IPA not found at $IPA_PATH" >&2
