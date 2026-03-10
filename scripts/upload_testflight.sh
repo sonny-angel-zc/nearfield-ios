@@ -21,8 +21,7 @@ if [[ ! -f "$IPA_PATH" ]]; then
     xcodebuild -exportArchive \
       -archivePath "$ARCHIVE_PATH" \
       -exportPath "$EXPORT_PATH" \
-      -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" \
-      -allowProvisioningUpdates >/tmp/nearfield-export.log 2>&1 || {
+      -exportOptionsPlist "$EXPORT_OPTIONS_PLIST" >/tmp/nearfield-export.log 2>&1 || {
         echo "ERROR: Failed exporting IPA from archive (see /tmp/nearfield-export.log)" >&2
         exit 2
       }

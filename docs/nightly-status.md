@@ -414,3 +414,26 @@
 - [2026-03-10 09:29:50 PDT] Preflight failed. See /tmp/nearfield-preflight.log
 - [2026-03-10 09:29:57 PDT] Overnight loop start (branch=sonny/setup-check)
 - [2026-03-10 09:29:57 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 09:55:27 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:55:27 PDT] Preflight passed
+- [2026-03-10 09:55:27 PDT] No pending task in queue; exiting cleanly
+- [2026-03-10 09:59:45 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:59:45 PDT] Preflight passed
+- [2026-03-10 09:59:45 PDT] No pending task in queue; exiting cleanly
+- [2026-03-10 09:59:49 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 09:59:49 PDT] Preflight passed
+- [2026-03-10 09:59:49 PDT] No pending task in queue; exiting cleanly
+- [2026-03-10 10:29:46 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:29:46 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:29:50 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:29:50 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:29:57 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:29:57 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:30:01 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:30:01 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:59:47 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:59:47 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:59:51 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:59:51 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-10 10:59:56 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-10 10:59:56 PDT] Preflight failed. See /tmp/nearfield-preflight.log
