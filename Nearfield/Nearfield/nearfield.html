@@ -1153,30 +1153,30 @@
                 const connectionAge = Math.max(0, t - pa.connectedAt);
                 const warmup = Math.min(1, connectionAge / 1.4);
                 const warmupShape = warmup * warmup;
-                const baseGain = exponentialGain(peer.distance, 3.0, 0.2) * warmupShape;
+                // Base tone fades in at 5m
+                const baseGain = exponentialGain(peer.distance, 5.0, 0.2) * warmupShape;
                 smoothParam(pa.gain.gain, baseGain, 0.26);
 
                 // Spatial panning from direction data
                 let panValue = 0;
                 if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
-                    // horizontalAngle: radians, negative = left, positive = right
                     panValue = Math.max(-1, Math.min(1, Math.sin(peer.horizontalAngle)));
                 } else if (peer.directionX !== undefined) {
-                    // directionX: negative = left, positive = right (unit vector component)
                     panValue = Math.max(-1, Math.min(1, peer.directionX));
                 }
                 smoothParam(pa.panner.pan, panValue, 0.14);
 
-                // Low-pass filter opens up as peers get closer
-                const proximity = Math.max(0, Math.min(1, 1 - (peer.distance / 3.0)));
+                // Low-pass filter opens up as peers get closer (based on 5m range)
+                const proximity = Math.max(0, Math.min(1, 1 - (peer.distance / 5.0)));
                 const filterFrequency = 850 + Math.pow(proximity, 1.25) * 5200;
                 smoothParam(pa.filter.frequency, filterFrequency, 0.3);
 
-                // Harmonic gains with exponential proximity curve
+                // Harmonics unlock at 3m → 2m → 1m (max harmonics)
+                const harmonicThresholds = [3.0, 2.0, 1.0];
                 pa.harmonicGains.forEach((hGain, i) => {
-                    const threshold = (i + 1) * 0.5; // Unlock at 1.5m, 1.0m, 0.5m
-                    const level = exponentialGain(peer.distance, 2.0 - threshold * 0.5, 0.12);
-                    const thresholdLevel = peer.distance < (2.0 - threshold * 0.5) ? level * warmupShape : 0;
+                    const maxDist = harmonicThresholds[i] || 1.0;
+                    const level = exponentialGain(peer.distance, maxDist, 0.12);
+                    const thresholdLevel = peer.distance < maxDist ? level * warmupShape : 0;
                     smoothParam(hGain.gain, thresholdLevel, 0.28);
                 });
             }
