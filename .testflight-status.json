@@ -1,1 +1,1 @@
-{"ok": true, "deliveryId": "f2cdd62f-2183-4169-bb99-83ed014e225a", "processingState": "VALID", "buildStatus": "VALID", "raw": {"build-status": "VALID", "delivery-uuid": "f2cdd62f-2183-4169-bb99-83ed014e225a"}}
+{"ok": true, "deliveryId": "f2cdd62f-2183-4169-bb99-83ed014e225a", "processingState": "VALID", "buildStatus": "VALID", "raw": {"delivery-uuid": "f2cdd62f-2183-4169-bb99-83ed014e225a", "build-status": "VALID"}}
