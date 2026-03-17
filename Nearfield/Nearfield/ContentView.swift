@@ -19,6 +19,45 @@ struct ContentView: View {
                 WebViewContainer(proximityManager: proximityManager)
                     .ignoresSafeArea()
                     .transition(.opacity)
+
+                // Grainfield mode toggle
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                proximityManager.isGrainfieldEnabled.toggle()
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(proximityManager.isGrainfieldEnabled
+                                          ? Color(red: 0.4, green: 0.85, blue: 0.55)
+                                          : Color.white.opacity(0.3))
+                                    .frame(width: 8, height: 8)
+                                Text(proximityManager.isGrainfieldEnabled ? "Grainfield" : "Nearfield")
+                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(.white.opacity(0.85))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(Color.black.opacity(0.5))
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(proximityManager.isGrainfieldEnabled
+                                                    ? Color(red: 0.4, green: 0.85, blue: 0.55).opacity(0.4)
+                                                    : Color.white.opacity(0.1), lineWidth: 1)
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 16)
+                        .padding(.top, 12)
+                    }
+                    Spacer()
+                }
             }
 
             if hasSeenOnboarding, let reconnectBanner = proximityManager.transientStatusText {
@@ -470,7 +509,8 @@ struct WebViewContainer: UIViewRepresentable {
             peers: \(peersJSON),
             debug: \(debugJSON),
             tiltX: \(proximityManager.tiltX),
-            tiltY: \(proximityManager.tiltY)
+            tiltY: \(proximityManager.tiltY),
+            grainfieldEnabled: \(proximityManager.isGrainfieldEnabled ? "true" : "false")
         });
         """
         webView.evaluateJavaScript(js, completionHandler: nil)
@@ -507,6 +547,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var tiltY: Float = 0
     @Published var debugSnapshot: DebugSnapshot = .empty
     @Published var transientStatusText: String?
+    @Published var isGrainfieldEnabled: Bool = false
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -762,7 +803,7 @@ class ProximityManager: NSObject, ObservableObject {
         debugSnapshot = DebugSnapshot(
             uwbState: debugSnapshot.uwbState,
             connectivityState: connectivitySummary,
-            grainfieldMode: "Nearfield fallback",
+            grainfieldMode: isGrainfieldEnabled ? "Grainfield active" : "Nearfield fallback",
             peers: peerDebug
         )
     }
