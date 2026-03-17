@@ -461,7 +461,11 @@
             peers: {},
             debug: {},
             tiltX: 0,
-            tiltY: 0
+            tiltY: 0,
+            grainfieldEnabled: false,
+            grainfieldRole: 'inactive',
+            grainfieldBufferAge: -1,
+            grainRate: 0
         };
 
         let debugOverlayVisible = false;
@@ -571,7 +575,10 @@
                 `ctx        ${audioCtx ? audioCtx.state : 'uninitialized'}`,
                 `playing    ${isPlaying ? 'yes' : 'no'}`,
                 `master     ${masterGain ? masterGain.gain.value.toFixed(2) : '--'}`,
-                `peerAudio  ${Object.keys(peerAudio).length}`
+                `peerAudio  ${Object.keys(peerAudio).length}`,
+                `grain src  ${grainfieldState.sourceName}`,
+                `grain age  ${nativeData.grainfieldBufferAge >= 0 ? nativeData.grainfieldBufferAge.toFixed(2) + 's' : '--'}`,
+                `grain rate ${(nativeData.grainRate || 0).toFixed(1)} hz`
             ];
 
             overlay.textContent = [
@@ -996,6 +1003,11 @@
         let delayFeedback = null;
         let delayWet = null;
         let delayTone = null;
+        let grainfieldState = {
+            sourceName: 'waiting',
+            lastBufferAt: -1
+        };
+        let granularEngine = null;
 
         function initAudio() {
             if (!audioCtx) {
@@ -1032,6 +1044,165 @@
                 masterGain.connect(audioCtx.destination);
                 // Send dry to delay for wet mix
                 masterGain.connect(delayNode);
+            }
+            if (!granularEngine) {
+                granularEngine = new GranularEngine(audioCtx, masterGain);
+            }
+        }
+
+        function decodeBase64ToFloat32(base64) {
+            const binary = atob(base64 || '');
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return new Float32Array(bytes.buffer);
+        }
+
+        class GranularEngine {
+            constructor(context, destination) {
+                this.ctx = context;
+                this.output = context.createGain();
+                this.output.gain.value = 0.0001;
+                this.filter = context.createBiquadFilter();
+                this.filter.type = 'lowpass';
+                this.filter.frequency.value = 1800;
+                this.filter.Q.value = 0.8;
+                this.output.connect(destination);
+                this.filter.connect(this.output);
+
+                this.slots = [0, 1].map(() => {
+                    const gain = context.createGain();
+                    gain.gain.value = 0;
+                    gain.connect(this.filter);
+                    return { gain, buffer: null, label: 'waiting' };
+                });
+
+                this.activeSlot = 0;
+                this.playhead = 0.5;
+                this.periodAbs = 0.05;
+                this.durationAbs = 0.1;
+                this.positionVar = 0.2;
+                this.resamplingVar = 0.15;
+                this.running = false;
+                this.scheduler = null;
+                this.nextGrainTime = 0;
+            }
+
+            start() {
+                if (this.running) return;
+                this.running = true;
+                this.nextGrainTime = this.ctx.currentTime + 0.05;
+                this.schedule();
+            }
+
+            stop() {
+                this.running = false;
+                if (this.scheduler) {
+                    clearTimeout(this.scheduler);
+                    this.scheduler = null;
+                }
+                smoothParam(this.output.gain, 0.0001, 0.12);
+            }
+
+            updateParameters(data) {
+                const peerCount = Math.max(data.peerCount || 0, 0);
+                const distance = data.nearestDistance > 0 ? data.nearestDistance : 2.2;
+                const proximity = Math.max(0, Math.min(1, 1 - (distance / 3.0)));
+                const burstFactor = 1 + Math.min(peerCount, 4) * 0.45 + proximity * 1.8;
+
+                this.periodAbs = Math.max(0.03, 0.08 / burstFactor);
+                this.durationAbs = 0.07 + proximity * 0.08;
+                this.positionVar = 0.12 + proximity * 0.34;
+                this.resamplingVar = 0.08 + proximity * 0.22;
+
+                const pitchTilt = Math.max(-1, Math.min(1, (data.tiltY || 0) / 0.8));
+                const rollTilt = Math.max(-1, Math.min(1, (data.tiltX || 0) / 0.9));
+                const filterBase = 900 + ((pitchTilt + 1) * 0.5) * 5200;
+                const filterOpen = filterBase + proximity * 1800;
+                smoothParam(this.filter.frequency, filterOpen, 0.18);
+
+                const outputGain = this.running ? (0.14 + proximity * 0.24 + Math.min(peerCount, 4) * 0.03) : 0.0001;
+                smoothParam(this.output.gain, outputGain, 0.14);
+                this.playhead = (rollTilt + 1) * 0.5;
+            }
+
+            updateBuffer(payload, sourceName) {
+                const floats = decodeBase64ToFloat32(payload.base64);
+                if (!floats.length) return;
+
+                const channelCount = Math.max(payload.channelCount || 1, 1);
+                const frameCount = Math.max(1, Math.floor(floats.length / channelCount));
+                const buffer = this.ctx.createBuffer(channelCount, frameCount, payload.sampleRate || this.ctx.sampleRate);
+
+                if (channelCount === 1) {
+                    buffer.copyToChannel(floats.subarray(0, frameCount), 0);
+                } else {
+                    for (let channel = 0; channel < channelCount; channel++) {
+                        const channelData = buffer.getChannelData(channel);
+                        for (let i = 0; i < frameCount; i++) {
+                            channelData[i] = floats[(i * channelCount) + channel] || 0;
+                        }
+                    }
+                }
+
+                const nextSlot = (this.activeSlot + 1) % this.slots.length;
+                const fadeTime = 0.35;
+                const now = this.ctx.currentTime;
+
+                this.slots[nextSlot].buffer = buffer;
+                this.slots[nextSlot].label = sourceName || 'peer';
+                this.slots[nextSlot].gain.gain.cancelScheduledValues(now);
+                this.slots[nextSlot].gain.gain.setValueAtTime(this.slots[nextSlot].gain.gain.value, now);
+                this.slots[nextSlot].gain.gain.linearRampToValueAtTime(1, now + fadeTime);
+
+                this.slots[this.activeSlot].gain.gain.cancelScheduledValues(now);
+                this.slots[this.activeSlot].gain.gain.setValueAtTime(this.slots[this.activeSlot].gain.gain.value, now);
+                this.slots[this.activeSlot].gain.gain.linearRampToValueAtTime(0, now + fadeTime);
+
+                this.activeSlot = nextSlot;
+                grainfieldState.sourceName = this.slots[this.activeSlot].label;
+                grainfieldState.lastBufferAt = performance.now();
+            }
+
+            schedule() {
+                if (!this.running) return;
+
+                while (this.nextGrainTime < this.ctx.currentTime + 0.16) {
+                    this.scheduleGrain(this.nextGrainTime);
+                    this.nextGrainTime += this.periodAbs;
+                }
+
+                this.scheduler = setTimeout(() => this.schedule(), 25);
+            }
+
+            scheduleGrain(time) {
+                const slot = this.slots[this.activeSlot];
+                if (!slot.buffer) return;
+
+                const source = this.ctx.createBufferSource();
+                source.buffer = slot.buffer;
+                source.playbackRate.value = 1 + ((Math.random() * 2) - 1) * this.resamplingVar;
+
+                const grainGain = this.ctx.createGain();
+                grainGain.gain.setValueAtTime(0, time);
+                grainGain.gain.linearRampToValueAtTime(0.4, time + 0.01);
+                grainGain.gain.linearRampToValueAtTime(0, time + this.durationAbs);
+
+                const maxOffset = Math.max(0.001, slot.buffer.duration - this.durationAbs - 0.01);
+                const centerOffset = Math.max(0, Math.min(maxOffset, maxOffset * this.playhead));
+                const offset = Math.max(
+                    0,
+                    Math.min(
+                        maxOffset,
+                        centerOffset + (((Math.random() * 2) - 1) * this.positionVar * maxOffset)
+                    )
+                );
+
+                source.connect(grainGain);
+                grainGain.connect(slot.gain);
+                source.start(time, offset, this.durationAbs);
+                source.stop(time + this.durationAbs + 0.02);
             }
         }
 
@@ -1138,6 +1309,7 @@
         }
 
         function updatePeerAudio() {
+            if (nativeData.grainfieldEnabled) return;
             if (!isPlaying || !audioCtx) return;
 
             const peers = nativeData.peers || {};
@@ -1212,6 +1384,10 @@
         }
 
         function updateTiltDetune() {
+            if (nativeData.grainfieldEnabled) {
+                document.getElementById('detuneIndicator').textContent = '';
+                return;
+            }
             if (!isPlaying || !phoneOsc) return;
 
             const tiltX = nativeData.tiltX || 0;
@@ -1235,47 +1411,82 @@
         let phoneOscTriangle = null;
         let phoneTriGain = null;
 
+        function stopHarmonicVoice() {
+            if (!audioCtx) return;
+            if (phoneGain) {
+                phoneGain.gain.cancelScheduledValues(audioCtx.currentTime);
+                phoneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.24);
+            }
+            setTimeout(() => {
+                if (phoneOsc) { phoneOsc.stop(); phoneOsc = null; }
+                if (phoneOscTriangle) { phoneOscTriangle.stop(); phoneOscTriangle = null; }
+                phoneGain = null;
+                phoneTriGain = null;
+            }, 260);
+            stopHarmonics();
+        }
+
+        function startHarmonicVoice() {
+            if (!audioCtx || phoneOsc) return;
+
+            phoneGain = audioCtx.createGain();
+            phoneGain.gain.value = 0.7;
+            phoneGain.connect(masterGain);
+
+            phoneOsc = audioCtx.createOscillator();
+            phoneOsc.type = 'sine';
+            phoneOsc.frequency.value = notes[currentNote];
+            phoneOsc.connect(phoneGain);
+            phoneOsc.start();
+
+            phoneOscTriangle = audioCtx.createOscillator();
+            phoneOscTriangle.type = 'triangle';
+            phoneOscTriangle.frequency.value = notes[currentNote];
+            phoneTriGain = audioCtx.createGain();
+            phoneTriGain.gain.value = 0.15;
+            phoneOscTriangle.connect(phoneTriGain);
+            phoneTriGain.connect(phoneGain);
+            phoneOscTriangle.start();
+        }
+
+        function syncAudioMode() {
+            if (!audioCtx || !masterGain || !granularEngine) return;
+
+            if (!isPlaying) {
+                granularEngine.stop();
+                return;
+            }
+
+            if (nativeData.grainfieldEnabled) {
+                stopHarmonicVoice();
+                granularEngine.start();
+                granularEngine.updateParameters(nativeData);
+            } else {
+                granularEngine.stop();
+                startHarmonicVoice();
+                updateHarmonics();
+            }
+        }
+
         function togglePlay() {
             initAudio();
             const btn = document.getElementById('playButton');
 
             if (isPlaying) {
-                if (phoneGain) {
-                    phoneGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                stopHarmonicVoice();
+                if (granularEngine) {
+                    granularEngine.stop();
                 }
-                setTimeout(() => {
-                    if (phoneOsc) { phoneOsc.stop(); phoneOsc = null; }
-                    if (phoneOscTriangle) { phoneOscTriangle.stop(); phoneOscTriangle = null; }
-                }, 300);
                 stopHarmonics();
                 isPlaying = false;
                 btn.classList.remove('playing');
                 btn.innerHTML = 'TAP TO<br>PLAY';
                 document.getElementById('detuneIndicator').textContent = '';
             } else {
-                phoneGain = audioCtx.createGain();
-                phoneGain.gain.value = 0.7;
-                phoneGain.connect(masterGain);
-
-                // Layered oscillators: sine + soft triangle
-                phoneOsc = audioCtx.createOscillator();
-                phoneOsc.type = 'sine';
-                phoneOsc.frequency.value = notes[currentNote];
-                phoneOsc.connect(phoneGain);
-                phoneOsc.start();
-
-                phoneOscTriangle = audioCtx.createOscillator();
-                phoneOscTriangle.type = 'triangle';
-                phoneOscTriangle.frequency.value = notes[currentNote];
-                phoneTriGain = audioCtx.createGain();
-                phoneTriGain.gain.value = 0.15;
-                phoneOscTriangle.connect(phoneTriGain);
-                phoneTriGain.connect(phoneGain);
-                phoneOscTriangle.start();
-
                 isPlaying = true;
                 btn.classList.add('playing');
                 btn.innerHTML = 'PLAYING';
+                syncAudioMode();
             }
         }
 
@@ -1289,9 +1500,24 @@
 
         function updateNativeData(data) {
             nativeData = { ...nativeData, ...data };
+            if (granularEngine) {
+                granularEngine.updateParameters(nativeData);
+            }
+            syncAudioMode();
             updateUI();
             updateTiltDetune();
         }
+
+        window.receiveGrainfieldBuffer = function(payload, sourceName) {
+            initAudio();
+            if (!granularEngine) return;
+            granularEngine.updateBuffer(payload, sourceName);
+            granularEngine.updateParameters(nativeData);
+            if (nativeData.grainfieldEnabled && isPlaying) {
+                granularEngine.start();
+            }
+            renderDebugOverlay();
+        };
 
         function updateUI() {
             const distEl = document.getElementById('distanceValue');
@@ -1302,7 +1528,9 @@
                 distEl.textContent = '--';
                 distEl.classList.add('no-peer');
                 peerEl.textContent = '0';
-                statusBar.textContent = 'Searching for nearby devices...';
+                statusBar.textContent = nativeData.grainfieldEnabled
+                    ? 'Waiting for Grainfield buffers...'
+                    : 'Searching for nearby devices...';
             } else {
                 distEl.classList.remove('no-peer');
                 if (nativeData.nearestDistance < 1) {
@@ -1311,10 +1539,23 @@
                     distEl.textContent = nativeData.nearestDistance.toFixed(2) + ' m';
                 }
                 peerEl.textContent = nativeData.peerCount;
-                statusBar.textContent = nativeData.peerCount + ' device' + (nativeData.peerCount > 1 ? 's' : '') + ' connected';
+                if (nativeData.grainfieldEnabled) {
+                    const roleLabel = nativeData.grainfieldRole === 'primary'
+                        ? 'Grainfield primary'
+                        : 'Grainfield listening';
+                    statusBar.textContent = `${roleLabel} • ${nativeData.peerCount} device${nativeData.peerCount > 1 ? 's' : ''} nearby`;
+                } else {
+                    statusBar.textContent = nativeData.peerCount + ' device' + (nativeData.peerCount > 1 ? 's' : '') + ' connected';
+                }
             }
 
-            updateHarmonics();
+            if (nativeData.grainfieldEnabled) {
+                if (granularEngine) {
+                    granularEngine.updateParameters(nativeData);
+                }
+            } else {
+                updateHarmonics();
+            }
             updateThemeColors();
             updateAmbientGlow();
             renderDebugOverlay();
