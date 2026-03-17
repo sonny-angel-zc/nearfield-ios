@@ -363,6 +363,25 @@ struct PeerData: Codable {
     var horizontalAngle: Float
 }
 
+struct PeerDebugData: Codable {
+    var distance: Float
+    var packetLoss: Float
+}
+
+struct DebugSnapshot: Codable {
+    var uwbState: String
+    var connectivityState: String
+    var grainfieldMode: String
+    var peers: [String: PeerDebugData]
+
+    static let empty = DebugSnapshot(
+        uwbState: "idle",
+        connectivityState: "idle",
+        grainfieldMode: "Nearfield fallback",
+        peers: [:]
+    )
+}
+
 private struct SessionPayload: Codable {
     var kind: String
     var displayName: String?
@@ -403,11 +422,20 @@ struct WebViewContainer: UIViewRepresentable {
             peersJSON = "{}"
         }
 
+        let debugJSON: String
+        if let jsonData = try? JSONEncoder().encode(proximityManager.debugSnapshot),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            debugJSON = jsonString
+        } else {
+            debugJSON = "{}"
+        }
+
         let js = """
         updateNativeData({
             nearestDistance: \(proximityManager.nearestDistance),
             peerCount: \(proximityManager.peerCount),
             peers: \(peersJSON),
+            debug: \(debugJSON),
             tiltX: \(proximityManager.tiltX),
             tiltY: \(proximityManager.tiltY)
         });
@@ -444,6 +472,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var peersData: [String: PeerData] = [:]
     @Published var tiltX: Float = 0
     @Published var tiltY: Float = 0
+    @Published var debugSnapshot: DebugSnapshot = .empty
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -456,6 +485,8 @@ class ProximityManager: NSObject, ObservableObject {
     private let serviceType = "nearfield"
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
     private var peerDisplayNames: [MCPeerID: String] = [:]
+    private var peerSuccessCounts: [MCPeerID: Int] = [:]
+    private var peerMissCounts: [MCPeerID: Int] = [:]
     private let motionManager = CMMotionManager()
     private let discoveryFeedback = UIImpactFeedbackGenerator(style: .light)
     private let proximityFeedback = UIImpactFeedbackGenerator(style: .soft)
@@ -504,6 +535,8 @@ class ProximityManager: NSObject, ObservableObject {
         niSession = NISession()
         niSession?.delegate = self
         _ = niSession?.discoveryToken
+        debugSnapshot.uwbState = "ready"
+        updateDebugSnapshot()
     }
 
     func prepareLocalConnectivity() {
@@ -527,6 +560,7 @@ class ProximityManager: NSObject, ObservableObject {
 
         didStartConnectivity = true
         print("Connectivity started")
+        updateDebugSnapshot()
     }
 
     func prepareBluetoothPermission() {
@@ -549,6 +583,7 @@ class ProximityManager: NSObject, ObservableObject {
         startMotionUpdates()
 
         print("Proximity manager started")
+        updateDebugSnapshot()
     }
 
     private func startMotionUpdates() {
@@ -577,6 +612,7 @@ class ProximityManager: NSObject, ObservableObject {
         didStartMotion = false
         didStartConnectivity = false
         didStartExperience = false
+        debugSnapshot = .empty
     }
 
     private func shareDiscoveryToken(with peer: MCPeerID) {
@@ -612,6 +648,8 @@ class ProximityManager: NSObject, ObservableObject {
             nearestDistance = peersData.values.map(\.distance).min() ?? -1
             peerCount = peersData.count
         }
+
+        updateDebugSnapshot()
     }
 
     private func resolvedDisplayName(for peer: MCPeerID) -> String {
@@ -630,6 +668,8 @@ class ProximityManager: NSObject, ObservableObject {
                 self.peersData[trimmed] = data
                 self.updateNearestDistance()
             }
+
+            self.updateDebugSnapshot()
         }
     }
 
@@ -662,16 +702,49 @@ class ProximityManager: NSObject, ObservableObject {
             self.proximityFeedback.prepare()
         }
     }
+
+    private func updateDebugSnapshot() {
+        let connectivitySummary: String
+        if let mcSession {
+            connectivitySummary = "\(mcSession.connectedPeers.count) connected"
+        } else if didStartConnectivity {
+            connectivitySummary = "searching"
+        } else {
+            connectivitySummary = "idle"
+        }
+
+        let peerDebug = Dictionary(uniqueKeysWithValues: peerTokens.keys.map { peer in
+            let success = peerSuccessCounts[peer, default: 0]
+            let miss = peerMissCounts[peer, default: 0]
+            let total = max(success + miss, 1)
+            let packetLoss = Float(miss) / Float(total)
+            let name = resolvedDisplayName(for: peer)
+            let distance = peersData[name]?.distance ?? -1
+            return (name, PeerDebugData(distance: distance, packetLoss: packetLoss))
+        })
+
+        debugSnapshot = DebugSnapshot(
+            uwbState: debugSnapshot.uwbState,
+            connectivityState: connectivitySummary,
+            grainfieldMode: "Nearfield fallback",
+            peers: peerDebug
+        )
+    }
 }
 
 // MARK: - NISessionDelegate
 extension ProximityManager: NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
+        debugSnapshot.uwbState = "ranging"
+        var seenPeers = Set<MCPeerID>()
+
         for object in nearbyObjects {
             for (peer, token) in peerTokens {
                 if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
                    let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
                    tokenData == objectTokenData {
+                    seenPeers.insert(peer)
+                    peerSuccessCounts[peer, default: 0] += 1
 
                     let distance = object.distance ?? -1
                     let direction = object.direction ?? simd_float3(0, 0, 0)
@@ -696,6 +769,12 @@ extension ProximityManager: NISessionDelegate {
                 }
             }
         }
+
+        for peer in peerTokens.keys where !seenPeers.contains(peer) {
+            peerMissCounts[peer, default: 0] += 1
+        }
+
+        updateDebugSnapshot()
     }
 
     func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
@@ -716,18 +795,24 @@ extension ProximityManager: NISessionDelegate {
 
     func sessionWasSuspended(_ session: NISession) {
         print("NI Session suspended")
+        debugSnapshot.uwbState = "suspended"
+        updateDebugSnapshot()
     }
 
     func sessionSuspensionEnded(_ session: NISession) {
         print("NI Session resumed")
+        debugSnapshot.uwbState = "resumed"
         for token in peerTokens.values {
             let config = NINearbyPeerConfiguration(peerToken: token)
             session.run(config)
         }
+        updateDebugSnapshot()
     }
 
     func session(_ session: NISession, didInvalidateWith error: Error) {
         print("NI Session invalidated: \(error)")
+        debugSnapshot.uwbState = "invalidated"
+        updateDebugSnapshot()
     }
 }
 
@@ -739,6 +824,7 @@ extension ProximityManager: MCSessionDelegate {
             print("Connected to \(peerID.displayName)")
             shareSessionMetadata(with: peerID)
             shareDiscoveryToken(with: peerID)
+            updateDebugSnapshot()
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
             triggerDisconnectHaptic()
@@ -747,10 +833,13 @@ extension ProximityManager: MCSessionDelegate {
                 self.peersData.removeValue(forKey: peerName)
                 self.peerTokens.removeValue(forKey: peerID)
                 self.peerDisplayNames.removeValue(forKey: peerID)
+                self.peerSuccessCounts.removeValue(forKey: peerID)
+                self.peerMissCounts.removeValue(forKey: peerID)
                 self.updateNearestDistance()
             }
         case .connecting:
             print("Connecting to \(peerID.displayName)")
+            updateDebugSnapshot()
         @unknown default:
             break
         }
@@ -770,6 +859,8 @@ extension ProximityManager: MCSessionDelegate {
                         peerTokens[peerID] = token
                         let config = NINearbyPeerConfiguration(peerToken: token)
                         niSession?.run(config)
+                        debugSnapshot.uwbState = "token exchanged"
+                        updateDebugSnapshot()
                         print("Configured NI with \(peerID.displayName)")
                     }
                 default:
@@ -782,6 +873,8 @@ extension ProximityManager: MCSessionDelegate {
                 peerTokens[peerID] = token
                 let config = NINearbyPeerConfiguration(peerToken: token)
                 niSession?.run(config)
+                debugSnapshot.uwbState = "token exchanged"
+                updateDebugSnapshot()
                 print("Configured NI with \(peerID.displayName)")
             }
         } catch {

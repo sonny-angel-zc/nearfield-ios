@@ -116,6 +116,31 @@
             transition: opacity 0.28s ease, transform 0.28s ease;
         }
 
+        .debug-overlay {
+            position: fixed;
+            top: calc(env(safe-area-inset-top) + 14px);
+            left: 14px;
+            right: 14px;
+            z-index: 1400;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(4, 7, 15, 0.78);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            color: rgba(214, 232, 255, 0.92);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.72rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.22s ease;
+        }
+
+        .debug-overlay.visible {
+            opacity: 1;
+        }
+
         /* Info display */
         .info-row {
             display: flex;
@@ -342,6 +367,8 @@
         </ul>
     </div>
 
+    <div class="debug-overlay" id="debugOverlay"></div>
+
     <div class="container">
         <h1>Nearfield</h1>
         <p class="subtitle">Tilt to detune / Get closer for harmonics</p>
@@ -427,9 +454,13 @@
             nearestDistance: -1,
             peerCount: 0,
             peers: {},
+            debug: {},
             tiltX: 0,
             tiltY: 0
         };
+
+        let debugOverlayVisible = false;
+        let debugTapHistory = [];
 
         // ==================== THREE.JS ====================
         let scene, camera, renderer;
@@ -510,6 +541,61 @@
                 inset 0 0 ${80 + intensity * 40}px rgba(255, 214, 140, ${0.08 + intensity * 0.16}),
                 0 0 ${40 + intensity * 30}px rgba(116, 162, 255, ${0.05 + intensity * 0.12})
             `;
+        }
+
+        function renderDebugOverlay() {
+            const overlay = document.getElementById('debugOverlay');
+            if (!overlay) return;
+
+            overlay.classList.toggle('visible', debugOverlayVisible);
+            if (!debugOverlayVisible) return;
+
+            const debug = nativeData.debug || {};
+            const peerDebug = debug.peers || {};
+            const peerLines = Object.entries(peerDebug).length
+                ? Object.entries(peerDebug).map(([name, info]) => {
+                    const dist = info.distance >= 0
+                        ? (info.distance < 1 ? `${(info.distance * 100).toFixed(0)}cm` : `${info.distance.toFixed(2)}m`)
+                        : '--';
+                    const loss = `${((info.packetLoss || 0) * 100).toFixed(0)}%`;
+                    return `${name.padEnd(12, ' ')} dist ${dist.padStart(6, ' ')} | loss ${loss}`;
+                })
+                : ['none'];
+
+            const audioLines = [
+                `ctx        ${audioCtx ? audioCtx.state : 'uninitialized'}`,
+                `playing    ${isPlaying ? 'yes' : 'no'}`,
+                `master     ${masterGain ? masterGain.gain.value.toFixed(2) : '--'}`,
+                `peerAudio  ${Object.keys(peerAudio).length}`
+            ];
+
+            overlay.textContent = [
+                'DEBUG OVERLAY',
+                `uwb        ${(debug.uwbState || 'idle')}`,
+                `connect    ${(debug.connectivityState || 'idle')}`,
+                `grainfield ${(debug.grainfieldMode || 'Nearfield fallback')}`,
+                '',
+                'PEERS',
+                ...peerLines,
+                '',
+                'AUDIO',
+                ...audioLines
+            ].join('\n');
+        }
+
+        function registerDebugTap() {
+            const now = performance.now();
+            debugTapHistory.push(now);
+
+            while (debugTapHistory.length && now - debugTapHistory[0] > 550) {
+                debugTapHistory.shift();
+            }
+
+            if (debugTapHistory.length >= 3) {
+                debugOverlayVisible = !debugOverlayVisible;
+                debugTapHistory.length = 0;
+                renderDebugOverlay();
+            }
         }
 
         function initThreeJS() {
@@ -882,6 +968,7 @@
             updateParticleStreams(now);
             updateThemeColors();
             updateAmbientGlow();
+            renderDebugOverlay();
 
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
@@ -1211,6 +1298,7 @@
             updateHarmonics();
             updateThemeColors();
             updateAmbientGlow();
+            renderDebugOverlay();
         }
 
         function updateDisplay() {
@@ -1285,7 +1373,10 @@
             });
 
             document.getElementById('playButton').addEventListener('click', togglePlay);
+            document.body.addEventListener('touchend', registerDebugTap, { passive: true });
+            document.body.addEventListener('click', registerDebugTap);
             updateDisplay();
+            renderDebugOverlay();
         }
 
         window.addEventListener('load', init);
