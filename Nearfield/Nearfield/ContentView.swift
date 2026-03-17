@@ -4,6 +4,7 @@ import NearbyInteraction
 import MultipeerConnectivity
 import CoreMotion
 import CoreBluetooth
+import UIKit
 
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -456,10 +457,14 @@ class ProximityManager: NSObject, ObservableObject {
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
     private var peerDisplayNames: [MCPeerID: String] = [:]
     private let motionManager = CMMotionManager()
+    private let discoveryFeedback = UIImpactFeedbackGenerator(style: .light)
+    private let proximityFeedback = UIImpactFeedbackGenerator(style: .soft)
+    private let disconnectFeedback = UINotificationFeedbackGenerator()
 
     private var didStartMotion = false
     private var didStartConnectivity = false
     private var didStartExperience = false
+    private var lastProximityPulseDate = Date.distantPast
 
     override init() {
         localDisplayName = Self.storedDisplayName()
@@ -481,6 +486,12 @@ class ProximityManager: NSObject, ObservableObject {
         guard !trimmed.isEmpty else { return }
         localDisplayName = trimmed
         UserDefaults.standard.set(trimmed, forKey: Self.displayNameDefaultsKey)
+    }
+
+    private func prepareHaptics() {
+        discoveryFeedback.prepare()
+        proximityFeedback.prepare()
+        disconnectFeedback.prepare()
     }
 
     func prepareNearbyInteraction() {
@@ -531,6 +542,7 @@ class ProximityManager: NSObject, ObservableObject {
         guard !didStartExperience else { return }
         didStartExperience = true
 
+        prepareHaptics()
         prepareNearbyInteraction()
         prepareLocalConnectivity()
         prepareBluetoothPermission()
@@ -620,6 +632,36 @@ class ProximityManager: NSObject, ObservableObject {
             }
         }
     }
+
+    private func triggerDiscoveryHaptic() {
+        DispatchQueue.main.async {
+            self.discoveryFeedback.impactOccurred(intensity: 0.55)
+            self.discoveryFeedback.prepare()
+        }
+    }
+
+    private func triggerDisconnectHaptic() {
+        DispatchQueue.main.async {
+            self.disconnectFeedback.notificationOccurred(.warning)
+            self.disconnectFeedback.prepare()
+        }
+    }
+
+    private func updateProximityHaptics(with distance: Float) {
+        guard distance > 0, distance < 0.3 else { return }
+
+        let now = Date()
+        let normalized = max(0, min(1, (0.3 - distance) / 0.3))
+        let minimumInterval = 0.55 - (Double(normalized) * 0.32)
+        guard now.timeIntervalSince(lastProximityPulseDate) >= minimumInterval else { return }
+
+        lastProximityPulseDate = now
+
+        DispatchQueue.main.async {
+            self.proximityFeedback.impactOccurred(intensity: CGFloat(0.25 + normalized * 0.55))
+            self.proximityFeedback.prepare()
+        }
+    }
 }
 
 // MARK: - NISessionDelegate
@@ -648,6 +690,7 @@ extension ProximityManager: NISessionDelegate {
                             horizontalAngle: horizontalAngle
                         )
                         self.updateNearestDistance()
+                        self.updateProximityHaptics(with: distance)
                     }
                     break
                 }
@@ -698,6 +741,7 @@ extension ProximityManager: MCSessionDelegate {
             shareDiscoveryToken(with: peerID)
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
+            triggerDisconnectHaptic()
             DispatchQueue.main.async {
                 let peerName = self.resolvedDisplayName(for: peerID)
                 self.peersData.removeValue(forKey: peerName)
@@ -761,6 +805,7 @@ extension ProximityManager: MCNearbyServiceAdvertiserDelegate {
 extension ProximityManager: MCNearbyServiceBrowserDelegate {
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
         print("Found peer: \(peerID.displayName)")
+        triggerDiscoveryHaptic()
         guard let mcSession else { return }
         browser.invitePeer(peerID, to: mcSession, withContext: nil, timeout: 10)
     }
