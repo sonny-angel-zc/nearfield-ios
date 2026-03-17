@@ -13,7 +13,7 @@
 - [x] P1 | overnight | peer-names | Add peer identity: let users pick a display name on first launch (stored in UserDefaults), transmit it via MultipeerConnectivity session metadata, and show peer names as floating labels in the visualization near each peer's node.
 - [x] P1 | overnight | haptic-feedback | Add subtle haptic feedback using UIImpactFeedbackGenerator: light tap when a new peer is discovered, soft pulse that intensifies as peers get very close (<0.3m), and a gentle notification when a peer disconnects.
 - [x] P2 | overnight | debug-overlay-toggle | Add a hidden debug overlay (triple-tap to toggle): show UWB session state, per-peer distances, packet loss, Grainfield mode status, and audio engine stats. Use a translucent dark overlay with monospace text. Already partially done in ux-polish commit — extend it.
-- [ ] P2 | overnight | session-persistence | Add session recovery: if the app is backgrounded and foregrounded, gracefully re-establish MultipeerConnectivity and NearbyInteraction sessions without requiring users to restart. Show a brief "Reconnecting..." state in the UI.
+- [x] P2 | overnight | session-persistence | Add session recovery: if the app is backgrounded and foregrounded, gracefully re-establish MultipeerConnectivity and NearbyInteraction sessions without requiring users to restart. Show a brief "Reconnecting..." state in the UI.
 
 ## Done
 - [x] P0 | overnight | grainfield-data-model | echo "create Grainfield session model TODO in code/doc"

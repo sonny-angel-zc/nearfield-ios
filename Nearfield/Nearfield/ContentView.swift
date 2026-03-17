@@ -9,6 +9,7 @@ import UIKit
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
     @StateObject private var proximityManager = ProximityManager()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -18,6 +19,28 @@ struct ContentView: View {
                 WebViewContainer(proximityManager: proximityManager)
                     .ignoresSafeArea()
                     .transition(.opacity)
+            }
+
+            if hasSeenOnboarding, let reconnectBanner = proximityManager.transientStatusText {
+                VStack {
+                    Text(reconnectBanner)
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.6))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                        .padding(.top, 22)
+
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
 
             if !hasSeenOnboarding {
@@ -32,6 +55,16 @@ struct ContentView: View {
         .onAppear {
             if hasSeenOnboarding {
                 proximityManager.startExperience()
+            }
+        }
+        .onChange(of: scenePhase) { newPhase in
+            switch newPhase {
+            case .background:
+                proximityManager.handleAppBackground()
+            case .active:
+                proximityManager.handleAppForeground()
+            default:
+                break
             }
         }
     }
@@ -473,6 +506,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var tiltX: Float = 0
     @Published var tiltY: Float = 0
     @Published var debugSnapshot: DebugSnapshot = .empty
+    @Published var transientStatusText: String?
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -496,6 +530,7 @@ class ProximityManager: NSObject, ObservableObject {
     private var didStartConnectivity = false
     private var didStartExperience = false
     private var lastProximityPulseDate = Date.distantPast
+    private var needsReconnect = false
 
     override init() {
         localDisplayName = Self.storedDisplayName()
@@ -612,6 +647,7 @@ class ProximityManager: NSObject, ObservableObject {
         didStartMotion = false
         didStartConnectivity = false
         didStartExperience = false
+        needsReconnect = false
         debugSnapshot = .empty
     }
 
@@ -729,6 +765,60 @@ class ProximityManager: NSObject, ObservableObject {
             grainfieldMode: "Nearfield fallback",
             peers: peerDebug
         )
+    }
+
+    func handleAppBackground() {
+        guard didStartExperience else { return }
+        needsReconnect = true
+        transientStatusText = nil
+
+        motionManager.stopDeviceMotionUpdates()
+        didStartMotion = false
+
+        niSession?.invalidate()
+        niSession = nil
+
+        mcAdvertiser?.stopAdvertisingPeer()
+        mcAdvertiser = nil
+
+        mcBrowser?.stopBrowsingForPeers()
+        mcBrowser = nil
+
+        mcSession?.disconnect()
+        mcSession = nil
+
+        didStartConnectivity = false
+        debugSnapshot.uwbState = "backgrounded"
+        updateDebugSnapshot()
+    }
+
+    func handleAppForeground() {
+        guard didStartExperience, needsReconnect else { return }
+
+        needsReconnect = false
+        peerTokens.removeAll()
+        peerSuccessCounts.removeAll()
+        peerMissCounts.removeAll()
+        peersData.removeAll()
+        updateNearestDistance()
+
+        transientStatusText = "Reconnecting..."
+        debugSnapshot.uwbState = "reconnecting"
+
+        prepareNearbyInteraction()
+        prepareLocalConnectivity()
+        prepareBluetoothPermission()
+        startMotionUpdates()
+        updateDebugSnapshot()
+
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            if self.transientStatusText == "Reconnecting..." {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self.transientStatusText = nil
+                }
+            }
+        }
     }
 }
 
