@@ -763,6 +763,7 @@ class ProximityManager: NSObject, ObservableObject {
             guard let motion, let self else { return }
             self.tiltX = Float(motion.attitude.roll)
             self.tiltY = Float(motion.attitude.pitch)
+            self.expireStaleGrainfieldListenerIfNeeded()
         }
     }
 
@@ -1061,6 +1062,19 @@ class ProximityManager: NSObject, ObservableObject {
             grainfieldRate: grainRate,
             peers: peerDebug
         )
+    }
+
+    private func expireStaleGrainfieldListenerIfNeeded() {
+        guard isGrainfieldListening, !isGrainfieldPrimary else { return }
+        guard let lastGrainfieldBufferDate else {
+            isGrainfieldListening = false
+            updateDebugSnapshot()
+            return
+        }
+
+        guard Date().timeIntervalSince(lastGrainfieldBufferDate) > 5 else { return }
+        isGrainfieldListening = false
+        updateDebugSnapshot()
     }
 
     private func handleIncomingAudioBuffer(_ audioBuffer: AudioBufferPayload, from peer: MCPeerID) {
