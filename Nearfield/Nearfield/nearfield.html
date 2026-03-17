@@ -692,6 +692,7 @@
         let delayNode = null;
         let delayFeedback = null;
         let delayWet = null;
+        let delayTone = null;
 
         function initAudio() {
             if (!audioCtx) {
@@ -702,21 +703,26 @@
             }
             if (!masterGain) {
                 masterGain = audioCtx.createGain();
-                masterGain.gain.value = 0.8;
+                masterGain.gain.value = 0.76;
 
                 // Delay/reverb effect chain
                 delayNode = audioCtx.createDelay(1.0);
-                delayNode.delayTime.value = 0.3;
+                delayNode.delayTime.value = 0.42;
                 delayFeedback = audioCtx.createGain();
-                delayFeedback.gain.value = 0.25;
+                delayFeedback.gain.value = 0.32;
                 delayWet = audioCtx.createGain();
-                delayWet.gain.value = 0.15;
+                delayWet.gain.value = 0.2;
+                delayTone = audioCtx.createBiquadFilter();
+                delayTone.type = 'lowpass';
+                delayTone.frequency.value = 2400;
+                delayTone.Q.value = 0.3;
 
                 // Feedback loop: delay → feedback → delay
                 delayNode.connect(delayFeedback);
                 delayFeedback.connect(delayNode);
                 // Wet signal to output
-                delayNode.connect(delayWet);
+                delayNode.connect(delayTone);
+                delayTone.connect(delayWet);
                 delayWet.connect(audioCtx.destination);
 
                 // Dry signal
@@ -757,6 +763,11 @@
             return Math.pow(normalized, 2.5) * maxGain;
         }
 
+        function smoothParam(param, value, timeConstant = 0.22) {
+            param.cancelScheduledValues(audioCtx.currentTime);
+            param.setTargetAtTime(value, audioCtx.currentTime, timeConstant);
+        }
+
         function setupPeerAudio(peerName, peer) {
             if (peerAudio[peerName]) return; // Already set up
 
@@ -767,12 +778,18 @@
             const gain = audioCtx.createGain();
             gain.gain.value = 0;
 
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 900;
+            filter.Q.value = 0.7;
+
             // Per-peer stereo panner
             const panner = audioCtx.createStereoPanner();
             panner.pan.value = 0;
 
-            // Chain: oscillators → gain → panner → master
-            gain.connect(panner);
+            // Chain: oscillators → gain → filter → panner → master
+            gain.connect(filter);
+            filter.connect(panner);
             panner.connect(masterGain);
 
             // Create layered base oscillator
@@ -786,7 +803,7 @@
             harmonicRatios.forEach(ratio => {
                 const hGain = audioCtx.createGain();
                 hGain.gain.value = 0;
-                hGain.connect(panner);
+                hGain.connect(filter);
 
                 const { sine: hOsc, triangle: hTri } = createLayeredOsc(baseFreq * ratio, hGain);
                 peerHarmonicOscs.push({ sine: hOsc, triangle: hTri });
@@ -794,10 +811,11 @@
             });
 
             peerAudio[peerName] = {
-                osc, oscTriangle, triGain, gain, panner,
+                osc, oscTriangle, triGain, gain, filter, panner,
                 harmonicOscs: peerHarmonicOscs,
                 harmonicGains: peerHarmonicGains,
-                baseFreq, noteIdx
+                baseFreq, noteIdx,
+                connectedAt: audioCtx.currentTime
             };
         }
 
@@ -811,6 +829,7 @@
                 try { h.triangle.stop(); } catch(e) {}
             });
             pa.gain.disconnect();
+            pa.filter.disconnect();
             pa.panner.disconnect();
             delete peerAudio[peerName];
         }
@@ -836,9 +855,12 @@
                 const pa = peerAudio[name];
                 const t = audioCtx.currentTime;
 
-                // Exponential volume based on distance
-                const baseGain = exponentialGain(peer.distance, 3.0, 0.2);
-                pa.gain.gain.setTargetAtTime(baseGain, t, 0.1);
+                // Exponential volume based on distance, with a gentle first-connection warm-up
+                const connectionAge = Math.max(0, t - pa.connectedAt);
+                const warmup = Math.min(1, connectionAge / 1.4);
+                const warmupShape = warmup * warmup;
+                const baseGain = exponentialGain(peer.distance, 3.0, 0.2) * warmupShape;
+                smoothParam(pa.gain.gain, baseGain, 0.26);
 
                 // Spatial panning from direction data
                 let panValue = 0;
@@ -849,17 +871,19 @@
                     // directionX: negative = left, positive = right (unit vector component)
                     panValue = Math.max(-1, Math.min(1, peer.directionX));
                 }
-                pa.panner.pan.setTargetAtTime(panValue, t, 0.05);
+                smoothParam(pa.panner.pan, panValue, 0.14);
+
+                // Low-pass filter opens up as peers get closer
+                const proximity = Math.max(0, Math.min(1, 1 - (peer.distance / 3.0)));
+                const filterFrequency = 850 + Math.pow(proximity, 1.25) * 5200;
+                smoothParam(pa.filter.frequency, filterFrequency, 0.3);
 
                 // Harmonic gains with exponential proximity curve
-                const harmonicRatios = [2, 1.5, 1.25];
                 pa.harmonicGains.forEach((hGain, i) => {
                     const threshold = (i + 1) * 0.5; // Unlock at 1.5m, 1.0m, 0.5m
-                    const maxDist = 2.0 - threshold;
-                    const dist = peer.distance - (2.0 - maxDist - threshold);
                     const level = exponentialGain(peer.distance, 2.0 - threshold * 0.5, 0.12);
-                    const thresholdLevel = peer.distance < (2.0 - threshold * 0.5) ? level : 0;
-                    hGain.gain.setTargetAtTime(thresholdLevel, t, 0.1);
+                    const thresholdLevel = peer.distance < (2.0 - threshold * 0.5) ? level * warmupShape : 0;
+                    smoothParam(hGain.gain, thresholdLevel, 0.28);
                 });
             }
         }
