@@ -33,6 +33,13 @@
             transition: background 1.6s ease;
         }
 
+        body.grainfield-active {
+            background:
+                radial-gradient(circle at 24% 18%, rgba(210, 255, 188, 0.16), transparent 34%),
+                radial-gradient(circle at 78% 14%, rgba(255, 197, 112, 0.12), transparent 28%),
+                linear-gradient(155deg, var(--bg-start), var(--bg-end));
+        }
+
         .container {
             max-width: 600px;
             margin: 0 auto;
@@ -59,6 +66,12 @@
             font-size: 0.8rem;
             color: #666;
             margin-bottom: 15px;
+            transition: color 0.45s ease, letter-spacing 0.45s ease, opacity 0.45s ease;
+        }
+
+        body.grainfield-active .subtitle {
+            color: rgba(229, 240, 225, 0.78);
+            letter-spacing: 0.08em;
         }
 
         /* 3D Scene Container */
@@ -76,6 +89,18 @@
                 inset 0 0 80px var(--scene-glow),
                 0 0 40px rgba(74, 158, 255, 0.05);
             transition: background 1.2s ease, box-shadow 0.8s ease;
+        }
+
+        body.grainfield-active .scene-container {
+            width: min(320px, 64vw);
+            height: min(320px, 64vw);
+            background:
+                radial-gradient(circle at 50% 48%, rgba(166, 214, 142, 0.18), transparent 32%),
+                radial-gradient(circle at 30% 30%, var(--scene-start), var(--scene-end));
+            box-shadow:
+                inset 0 0 70px rgba(255, 248, 223, 0.05),
+                inset 0 0 110px rgba(170, 206, 132, 0.12),
+                0 0 60px rgba(164, 210, 150, 0.12);
         }
 
         .scene-container canvas {
@@ -120,6 +145,10 @@
             transition: opacity 0.28s ease, transform 0.28s ease;
         }
 
+        body.grainfield-active .peer-label {
+            opacity: 0.34 !important;
+        }
+
         .debug-overlay {
             position: fixed;
             top: calc(env(safe-area-inset-top) + 14px);
@@ -153,6 +182,7 @@
             max-width: 280px;
             margin: 15px 0;
             font-family: monospace;
+            transition: opacity 0.35s ease, transform 0.35s ease;
         }
 
         .info-label {
@@ -170,22 +200,147 @@
             color: #666;
         }
 
+        .grainfield-panel {
+            width: 100%;
+            max-width: 320px;
+            margin: 4px 0 10px;
+            padding: 14px 16px;
+            border-radius: 24px;
+            border: 1px solid rgba(205, 228, 190, 0.18);
+            background:
+                linear-gradient(180deg, rgba(14, 22, 14, 0.66), rgba(8, 12, 10, 0.42));
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.04),
+                0 18px 38px rgba(0, 0, 0, 0.22);
+            backdrop-filter: blur(16px);
+            opacity: 0;
+            transform: translateY(10px);
+            pointer-events: none;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+
+        body.grainfield-active .grainfield-panel {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .grainfield-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .grainfield-label {
+            color: rgba(203, 221, 181, 0.76);
+            font-size: 0.7rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+        }
+
+        .grainfield-role {
+            color: rgba(255, 235, 195, 0.86);
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.72rem;
+        }
+
+        .grainfield-copy {
+            color: rgba(240, 242, 234, 0.88);
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin-bottom: 14px;
+        }
+
+        .grainfield-metrics {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 12px;
+        }
+
+        .grainfield-metric {
+            padding: 10px 12px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .grainfield-metric-label {
+            display: block;
+            color: rgba(198, 214, 181, 0.62);
+            font-size: 0.66rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .grainfield-metric-value {
+            color: #f4ecd5;
+            font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+            font-size: 0.86rem;
+        }
+
+        .tilt-bar {
+            position: relative;
+            height: 6px;
+            margin-top: 8px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+        }
+
+        .tilt-bar-fill {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #9dcd72, #f2d18a);
+            transform-origin: left center;
+            transition: width 0.18s ease, transform 0.18s ease;
+        }
+
+        .grainfield-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(159, 205, 114, 0.12);
+            border: 1px solid rgba(159, 205, 114, 0.2);
+            color: rgba(235, 242, 225, 0.88);
+            font-size: 0.72rem;
+        }
+
+        .grainfield-badge::before {
+            content: "";
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #a8d67d;
+            box-shadow: 0 0 10px rgba(168, 214, 125, 0.7);
+        }
+
         /* Note display */
         .note-display {
             text-align: center;
             margin: 4px 0;
+            transition: opacity 0.35s ease, transform 0.35s ease;
         }
 
         .my-note {
             font-size: 3rem;
             font-weight: 200;
             color: #4a9eff;
+            transition: color 0.35s ease, text-shadow 0.35s ease;
         }
 
         .my-freq {
             font-family: monospace;
             font-size: 1rem;
             color: #666;
+            transition: color 0.35s ease;
         }
 
         .detune-indicator {
@@ -193,6 +348,17 @@
             font-size: 0.8rem;
             color: #ff9500;
             height: 1.2em;
+            transition: color 0.35s ease;
+        }
+
+        body.grainfield-active .my-note {
+            color: #dce8cf;
+            text-shadow: 0 0 24px rgba(176, 211, 132, 0.2);
+        }
+
+        body.grainfield-active .my-freq,
+        body.grainfield-active .detune-indicator {
+            color: rgba(221, 231, 209, 0.62);
         }
 
         /* Play button */
@@ -210,6 +376,7 @@
             align-items: center;
             justify-content: center;
             margin: 8px 0;
+            transition: all 0.3s, transform 0.35s ease, box-shadow 0.35s ease;
         }
 
         .play-button.playing {
@@ -217,6 +384,22 @@
             color: #fff;
             border-color: #4a9eff;
             box-shadow: 0 0 30px rgba(74, 158, 255, 0.4);
+        }
+
+        body.grainfield-active .play-button {
+            width: 112px;
+            height: 112px;
+            background: linear-gradient(145deg, rgba(26, 37, 24, 0.96), rgba(16, 22, 15, 0.96));
+            border-color: rgba(168, 214, 125, 0.34);
+            color: #d8e8c2;
+            box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+        }
+
+        body.grainfield-active .play-button.playing {
+            background: linear-gradient(145deg, #96c86c, #5d7d47);
+            border-color: #d4e3a7;
+            color: #11200d;
+            box-shadow: 0 0 36px rgba(150, 200, 108, 0.34);
         }
 
         /* Note selector */
@@ -227,6 +410,12 @@
             justify-content: center;
             margin: 4px 0;
             max-width: 320px;
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+
+        body.grainfield-active .note-selector {
+            opacity: 0.45;
+            transform: scale(0.96);
         }
 
         .note-btn {
@@ -254,6 +443,11 @@
             padding: 10px 10px 0;
             text-align: center;
             flex-shrink: 0;
+            transition: color 0.35s ease;
+        }
+
+        body.grainfield-active .status-bar {
+            color: rgba(229, 235, 223, 0.78);
         }
 
         /* Loading Screen */
@@ -345,6 +539,17 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
+
+        @media (max-width: 420px) {
+            body.grainfield-active .scene-container {
+                width: min(300px, 78vw);
+                height: min(300px, 78vw);
+            }
+
+            .grainfield-panel {
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -376,7 +581,7 @@
 
     <div class="container">
         <h1>Nearfield</h1>
-        <p class="subtitle">Tilt to detune / Get closer for harmonics</p>
+        <p class="subtitle" id="modeSubtitle">Tilt to detune / Get closer for harmonics</p>
 
         <div class="scene-container" id="sceneContainer">
             <div class="ambient-glow" id="ambientGlow"></div>
@@ -391,6 +596,36 @@
             <div style="text-align: right;">
                 <div class="info-label">PEERS</div>
                 <div class="info-value" id="peerCount">0</div>
+                </div>
+            </div>
+
+        <div class="grainfield-panel" id="grainfieldPanel">
+            <div class="grainfield-panel-header">
+                <span class="grainfield-label">Grainfield lattice</span>
+                <span class="grainfield-role" id="grainfieldRole">inactive</span>
+            </div>
+            <p class="grainfield-copy" id="grainfieldCopy">
+                Tilt the phone to sweep through the shared buffer. Pitch opens the canopy, roll crawls across the grain bed.
+            </p>
+            <div class="grainfield-metrics">
+                <div class="grainfield-metric">
+                    <span class="grainfield-metric-label">Roll / Scan</span>
+                    <div class="grainfield-metric-value" id="grainTiltXValue">0.00</div>
+                    <div class="tilt-bar"><div class="tilt-bar-fill" id="grainTiltXFill"></div></div>
+                </div>
+                <div class="grainfield-metric">
+                    <span class="grainfield-metric-label">Pitch / Bloom</span>
+                    <div class="grainfield-metric-value" id="grainTiltYValue">0.00</div>
+                    <div class="tilt-bar"><div class="tilt-bar-fill" id="grainTiltYFill"></div></div>
+                </div>
+                <div class="grainfield-metric">
+                    <span class="grainfield-metric-label">Grain density</span>
+                    <div class="grainfield-metric-value" id="grainDensityValue">idle</div>
+                </div>
+                <div class="grainfield-metric">
+                    <span class="grainfield-metric-label">Buffer freshness</span>
+                    <div class="grainfield-metric-value" id="grainFreshnessValue"><span class="grainfield-badge">waiting</span></div>
+                </div>
             </div>
         </div>
 
@@ -479,6 +714,10 @@
         let peerParticles = {}; // name → { group, particles }
         let peerLabels = {};
         let compassGroup;  // Group that rotates with device tilt
+        let mycelialGroup;
+        let mycelialNodes = [];
+        let mycelialLinks = [];
+        let mycelialPulse;
 
         const MAX_RANGE = 5;  // 5 meters max range
         const SCENE_RADIUS = 2;  // Scene fits in 2 unit radius
@@ -505,6 +744,29 @@
         function updateThemeColors() {
             const count = Math.max(0, nativeData.peerCount || 0);
             const root = document.documentElement;
+            if (nativeData.grainfieldEnabled) {
+                const grainGrowth = Math.min((nativeData.grainRate || 0) / 24, 1);
+                const freshness = nativeData.grainfieldBufferAge >= 0
+                    ? Math.max(0, 1 - Math.min(nativeData.grainfieldBufferAge / 4, 1))
+                    : 0;
+                const spore = { bg: [9, 18, 12], end: [3, 8, 5], accent: [120, 170, 92], scene: [27, 42, 20] };
+                const bloom = { bg: [38, 24, 14], end: [11, 7, 5], accent: [216, 184, 112], scene: [72, 52, 26] };
+                const blend = Math.max(grainGrowth * 0.65, freshness * 0.85);
+                const finalBlend = {
+                    bg: mixColor(spore.bg, bloom.bg, blend),
+                    end: mixColor(spore.end, bloom.end, blend * 0.8),
+                    accent: mixColor(spore.accent, bloom.accent, blend),
+                    scene: mixColor(spore.scene, bloom.scene, blend * 0.7)
+                };
+
+                root.style.setProperty('--bg-start', colorString(finalBlend.bg));
+                root.style.setProperty('--bg-end', colorString(finalBlend.end));
+                root.style.setProperty('--bg-accent', colorString(finalBlend.accent, 0.24 + freshness * 0.08));
+                root.style.setProperty('--scene-start', colorString(finalBlend.scene));
+                root.style.setProperty('--scene-end', colorString(finalBlend.end));
+                root.style.setProperty('--scene-glow', colorString(finalBlend.accent, 0.14 + grainGrowth * 0.08));
+                return;
+            }
             const cold = { bg: [8, 16, 31], end: [2, 4, 9], accent: [38, 70, 138], scene: [19, 29, 54] };
             const warmPurple = { bg: [29, 14, 54], end: [8, 5, 18], accent: [117, 74, 183], scene: [42, 18, 70] };
             const golden = { bg: [62, 34, 18], end: [13, 8, 5], accent: [201, 149, 72], scene: [86, 54, 23] };
@@ -667,6 +929,65 @@
             });
             const centerGlow = new THREE.Mesh(glowGeometry, glowMaterial);
             centerSphere.add(centerGlow);
+
+            mycelialGroup = new THREE.Group();
+            mycelialGroup.visible = false;
+            compassGroup.add(mycelialGroup);
+
+            const pulseMaterial = new THREE.MeshBasicMaterial({
+                color: 0xb7db89,
+                transparent: true,
+                opacity: 0.12,
+                side: THREE.DoubleSide
+            });
+            mycelialPulse = new THREE.Mesh(new THREE.RingGeometry(0.16, 0.2, 64), pulseMaterial);
+            mycelialPulse.rotation.x = -Math.PI / 2;
+            mycelialGroup.add(mycelialPulse);
+
+            for (let i = 0; i < 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const radius = 0.55 + ((i % 3) * 0.26);
+                const node = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.035 + (i % 4) * 0.007, 18, 18),
+                    new THREE.MeshPhongMaterial({
+                        color: 0xc8d98f,
+                        emissive: 0x8fb55b,
+                        emissiveIntensity: 0.2,
+                        transparent: true,
+                        opacity: 0.88
+                    })
+                );
+                node.userData = {
+                    baseAngle: angle,
+                    baseRadius: radius,
+                    baseHeight: ((i % 2) === 0 ? 1 : -1) * (0.03 + (i % 3) * 0.02),
+                    sway: 0.15 + (i % 5) * 0.03,
+                    offset: i * 0.37
+                };
+                mycelialNodes.push(node);
+                mycelialGroup.add(node);
+            }
+
+            const linkPairs = [
+                [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6],
+                [6, 7], [7, 8], [8, 9], [9, 10], [10, 11], [11, 0],
+                [0, 4], [2, 7], [5, 9], [8, 11]
+            ];
+
+            linkPairs.forEach(([from, to]) => {
+                const geometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(),
+                    new THREE.Vector3()
+                ]);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x98c56b,
+                    transparent: true,
+                    opacity: 0.22
+                });
+                const line = new THREE.Line(geometry, material);
+                mycelialLinks.push({ line, from, to });
+                mycelialGroup.add(line);
+            });
 
             // Distance rings (at 1m, 2m, 3m, 4m, 5m)
             [1, 2, 3, 4, 5].forEach((meters, i) => {
@@ -957,6 +1278,62 @@
             }
         }
 
+        function updateMycelialNetwork(time) {
+            if (!mycelialGroup || !centerSphere) return;
+
+            const active = !!nativeData.grainfieldEnabled;
+            mycelialGroup.visible = active;
+            if (!active) return;
+
+            const grainRate = Math.max(nativeData.grainRate || 0, 0);
+            const rateEnergy = Math.min(grainRate / 24, 1);
+            const peerEnergy = Math.min((nativeData.peerCount || 0) / 4, 1);
+            const freshness = nativeData.grainfieldBufferAge >= 0
+                ? Math.max(0, 1 - Math.min(nativeData.grainfieldBufferAge / 4, 1))
+                : 0;
+            const roll = Math.max(-1, Math.min(1, (nativeData.tiltX || 0) / 0.9));
+            const pitch = Math.max(-1, Math.min(1, (nativeData.tiltY || 0) / 0.8));
+            const networkEnergy = Math.max(rateEnergy * 0.7, freshness * 0.9, peerEnergy * 0.45);
+
+            mycelialGroup.rotation.y = time * 0.09 + roll * 0.24;
+            mycelialGroup.rotation.x = pitch * 0.1;
+
+            mycelialNodes.forEach((node, index) => {
+                const wobble = Math.sin(time * (0.8 + node.userData.sway) + node.userData.offset);
+                const angle = node.userData.baseAngle + roll * 0.28 + wobble * 0.1;
+                const radius = node.userData.baseRadius + pitch * 0.08 + Math.sin(time * 1.6 + index) * 0.03;
+                const y = node.userData.baseHeight + Math.cos(time * 1.3 + node.userData.offset) * 0.05 + pitch * 0.12;
+                node.position.set(Math.sin(angle) * radius, y, -Math.cos(angle) * radius);
+
+                const scale = 0.9 + networkEnergy * 1.4 + freshness * 0.35 * Math.sin(time * 2.2 + index);
+                node.scale.setScalar(scale);
+                node.material.opacity = 0.45 + freshness * 0.4 + rateEnergy * 0.12;
+                node.material.emissiveIntensity = 0.12 + networkEnergy * 0.65;
+                node.material.color.setRGB(
+                    0.64 + freshness * 0.2,
+                    0.76 + networkEnergy * 0.15,
+                    0.46 + rateEnergy * 0.12
+                );
+            });
+
+            mycelialLinks.forEach(({ line, from, to }) => {
+                const positions = line.geometry.attributes.position.array;
+                const start = mycelialNodes[from].position;
+                const end = mycelialNodes[to].position;
+                positions[0] = start.x;
+                positions[1] = start.y;
+                positions[2] = start.z;
+                positions[3] = end.x;
+                positions[4] = end.y;
+                positions[5] = end.z;
+                line.geometry.attributes.position.needsUpdate = true;
+                line.material.opacity = 0.08 + networkEnergy * 0.28 + freshness * 0.1;
+            });
+
+            mycelialPulse.scale.setScalar(1 + networkEnergy * 0.8 + Math.sin(time * 2.4) * 0.08);
+            mycelialPulse.material.opacity = 0.08 + freshness * 0.12 + rateEnergy * 0.08;
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const now = performance.now() * 0.001;
@@ -987,6 +1364,7 @@
             // Update peer positions
             updatePeerSpheres();
             updateParticleStreams(now);
+            updateMycelialNetwork(now);
             updateThemeColors();
             updateAmbientGlow();
             renderDebugOverlay();
@@ -1523,6 +1901,18 @@
             const distEl = document.getElementById('distanceValue');
             const peerEl = document.getElementById('peerCount');
             const statusBar = document.getElementById('statusBar');
+            const subtitle = document.getElementById('modeSubtitle');
+            const grainfieldRole = document.getElementById('grainfieldRole');
+            const grainfieldCopy = document.getElementById('grainfieldCopy');
+            const grainTiltXValue = document.getElementById('grainTiltXValue');
+            const grainTiltYValue = document.getElementById('grainTiltYValue');
+            const grainTiltXFill = document.getElementById('grainTiltXFill');
+            const grainTiltYFill = document.getElementById('grainTiltYFill');
+            const grainDensityValue = document.getElementById('grainDensityValue');
+            const grainFreshnessValue = document.getElementById('grainFreshnessValue');
+            const body = document.body;
+
+            body.classList.toggle('grainfield-active', !!nativeData.grainfieldEnabled);
 
             if (nativeData.nearestDistance < 0 || nativeData.peerCount === 0) {
                 distEl.textContent = '--';
@@ -1547,6 +1937,45 @@
                 } else {
                     statusBar.textContent = nativeData.peerCount + ' device' + (nativeData.peerCount > 1 ? 's' : '') + ' connected';
                 }
+            }
+
+            if (nativeData.grainfieldEnabled) {
+                const roleLabel = nativeData.grainfieldRole === 'primary'
+                    ? 'primary broadcaster'
+                    : 'listening canopy';
+                const roll = Math.max(-1, Math.min(1, (nativeData.tiltX || 0) / 0.9));
+                const pitch = Math.max(-1, Math.min(1, (nativeData.tiltY || 0) / 0.8));
+                const freshnessText = nativeData.grainfieldBufferAge >= 0
+                    ? `${nativeData.grainfieldBufferAge.toFixed(2)}s old`
+                    : 'waiting for spores';
+
+                subtitle.textContent = 'Tilt through the shared mycelial buffer';
+                grainfieldRole.textContent = roleLabel;
+                grainfieldCopy.textContent = nativeData.grainfieldRole === 'primary'
+                    ? 'Your phone seeds the lattice. Pitch blooms the filter, roll drags the playhead through the grain bed.'
+                    : 'You are listening into the lattice. Tilt to trace the borrowed texture and expose hidden strands.';
+                grainTiltXValue.textContent = `${roll >= 0 ? '+' : ''}${roll.toFixed(2)}`;
+                grainTiltYValue.textContent = `${pitch >= 0 ? '+' : ''}${pitch.toFixed(2)}`;
+                grainTiltXFill.style.width = `${Math.abs(roll) * 50}%`;
+                grainTiltXFill.style.transform = roll >= 0 ? 'scaleX(1)' : 'translateX(-100%) scaleX(1)';
+                grainTiltYFill.style.width = `${Math.abs(pitch) * 50}%`;
+                grainTiltYFill.style.transform = pitch >= 0 ? 'scaleX(1)' : 'translateX(-100%) scaleX(1)';
+                grainDensityValue.textContent = nativeData.grainRate > 0
+                    ? `${nativeData.grainRate.toFixed(1)} grains/s`
+                    : 'idle';
+                grainFreshnessValue.innerHTML = nativeData.grainfieldBufferAge >= 0
+                    ? `<span class="grainfield-badge">${freshnessText}</span>`
+                    : '<span class="grainfield-badge">waiting</span>';
+            } else {
+                subtitle.textContent = 'Tilt to detune / Get closer for harmonics';
+                grainfieldRole.textContent = 'inactive';
+                grainfieldCopy.textContent = 'Tilt the phone to sweep through the shared buffer. Pitch opens the canopy, roll crawls across the grain bed.';
+                grainTiltXValue.textContent = '0.00';
+                grainTiltYValue.textContent = '0.00';
+                grainTiltXFill.style.width = '0%';
+                grainTiltYFill.style.width = '0%';
+                grainDensityValue.textContent = 'idle';
+                grainFreshnessValue.innerHTML = '<span class="grainfield-badge">waiting</span>';
             }
 
             if (nativeData.grainfieldEnabled) {
