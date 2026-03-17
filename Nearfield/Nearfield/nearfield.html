@@ -786,16 +786,39 @@
                     compassGroup.add(peerParticles[name].group);
                 }
 
-                // Place peers on radar by distance only
-                // Distribute evenly around the circle, sorted by name for stability
+                // Position peers on radar: use real UWB direction when available
                 const clampedDistance = Math.min(peer.distance, MAX_RANGE);
                 const radius = clampedDistance * SCALE;
-                const y = 0;
+                let angle = 0;
+                let y = 0;
+                let hasRealDirection = false;
 
-                const peerNames = Object.keys(nativeData.peers || {}).sort();
-                const idx = peerNames.indexOf(name);
-                const total = peerNames.length || 1;
-                const angle = (idx / total) * Math.PI * 2;
+                // Use horizontalAngle if UWB is providing it
+                if (peer.horizontalAngle !== undefined && Math.abs(peer.horizontalAngle) > 0.001) {
+                    angle = peer.horizontalAngle;
+                    hasRealDirection = true;
+                }
+
+                // Fall back to direction vector
+                if (!hasRealDirection && peer.directionX !== undefined && peer.directionZ !== undefined) {
+                    const dxz = Math.sqrt(peer.directionX ** 2 + peer.directionZ ** 2);
+                    if (dxz > 0.01) {
+                        angle = Math.atan2(peer.directionX, -peer.directionZ);
+                        hasRealDirection = true;
+                        if (peer.directionY !== undefined) {
+                            const mag = Math.sqrt(peer.directionX ** 2 + peer.directionY ** 2 + peer.directionZ ** 2);
+                            if (mag > 0.01) y = (peer.directionY / mag) * radius * 0.25;
+                        }
+                    }
+                }
+
+                // No real direction — distribute evenly
+                if (!hasRealDirection) {
+                    const peerNames = Object.keys(nativeData.peers || {}).sort();
+                    const idx = peerNames.indexOf(name);
+                    const total = peerNames.length || 1;
+                    angle = (idx / total) * Math.PI * 2;
+                }
 
                 const x = Math.sin(angle) * radius;
                 const z = -Math.cos(angle) * radius;
@@ -1143,12 +1166,18 @@
                 const baseGain = exponentialGain(peer.distance, 5.0, 0.2) * warmupShape;
                 smoothParam(pa.gain.gain, baseGain, 0.26);
 
-                // Stereo panning based on visual position in the radar
-                const peerNames = Object.keys(nativeData.peers || {}).sort();
-                const pIdx = peerNames.indexOf(name);
-                const pTotal = peerNames.length || 1;
-                const pAngle = (pIdx / pTotal) * Math.PI * 2;
-                const panValue = Math.sin(pAngle) * 0.6;
+                // Stereo panning: use real direction if available, else spread by index
+                let panValue = 0;
+                if (peer.horizontalAngle !== undefined && Math.abs(peer.horizontalAngle) > 0.001) {
+                    panValue = Math.max(-1, Math.min(1, Math.sin(peer.horizontalAngle)));
+                } else if (peer.directionX !== undefined && Math.abs(peer.directionX) > 0.01) {
+                    panValue = Math.max(-1, Math.min(1, peer.directionX));
+                } else {
+                    const peerNames = Object.keys(nativeData.peers || {}).sort();
+                    const pIdx = peerNames.indexOf(name);
+                    const pTotal = peerNames.length || 1;
+                    panValue = Math.sin((pIdx / pTotal) * Math.PI * 2) * 0.6;
+                }
                 smoothParam(pa.panner.pan, panValue, 0.14);
 
                 // Low-pass filter opens up as peers get closer (based on 5m range)
