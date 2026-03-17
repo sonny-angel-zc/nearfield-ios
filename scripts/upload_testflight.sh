@@ -13,6 +13,7 @@ APP_PASSWORD="${APP_PASSWORD:-}"
 ASC_API_KEY="${ASC_API_KEY_PATH:-${ASC_PRIVATE_KEY_PATH:-}}"
 ASC_KEY_ID="${ASC_KEY_ID:-}"
 ASC_ISSUER_ID="${ASC_ISSUER_ID:-}"
+DELIVERY_ID_FILE="${DELIVERY_ID_FILE:-$ROOT/.testflight-delivery-id}"
 
 if [[ ! -f "$IPA_PATH" ]]; then
   if [[ -d "$ARCHIVE_PATH" && -f "$EXPORT_OPTIONS_PLIST" ]]; then
@@ -49,16 +50,30 @@ upload_with_apple_id() {
     --password "$APP_PASSWORD"
 }
 
+store_delivery_id() {
+  local output="$1"
+  local delivery_id
+  delivery_id="$(printf '%s\n' "$output" | sed -n 's/.*Delivery UUID: \([A-Fa-f0-9-]\+\).*/\1/p' | head -n 1)"
+  if [[ -n "$delivery_id" ]]; then
+    printf '%s\n' "$delivery_id" > "$DELIVERY_ID_FILE"
+    echo "Saved delivery UUID to $DELIVERY_ID_FILE"
+  fi
+}
+
 if [[ -n "$ASC_KEY_ID" && -n "$ASC_ISSUER_ID" ]]; then
   echo "Uploading with App Store Connect API key..."
-  upload_with_api_key
+  output="$(upload_with_api_key 2>&1)"
+  printf '%s\n' "$output"
+  store_delivery_id "$output"
   echo "Upload submitted via API key"
   exit 0
 fi
 
 if [[ -n "$APPLE_ID" && -n "$APP_PASSWORD" ]]; then
   echo "Uploading with Apple ID + app-specific password..."
-  upload_with_apple_id
+  output="$(upload_with_apple_id 2>&1)"
+  printf '%s\n' "$output"
+  store_delivery_id "$output"
   echo "Upload submitted via Apple ID"
   exit 0
 fi

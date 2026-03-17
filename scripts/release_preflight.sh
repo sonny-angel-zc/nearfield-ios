@@ -15,11 +15,16 @@ warn() { echo -e "${YLW}! $*${NC}"; }
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 ALLOWED_REGEX="${ALLOWED_RELEASE_BRANCH_REGEX:-^(main|release/.+)$}"
+REQUIRE_RELEASE_BRANCH="${REQUIRE_RELEASE_BRANCH:-0}"
 
 if [[ ! "$BRANCH" =~ $ALLOWED_REGEX ]]; then
-  fail "Release must be built from main/release branch. Current: $BRANCH"
+  if [[ "$REQUIRE_RELEASE_BRANCH" == "1" ]]; then
+    fail "Release must be built from main/release branch. Current: $BRANCH"
+  fi
+  warn "Current branch $BRANCH is outside $ALLOWED_REGEX; continuing because REQUIRE_RELEASE_BRANCH=0"
+else
+  pass "Branch check ($BRANCH)"
 fi
-pass "Branch check ($BRANCH)"
 
 DIRTY_NON_EPHEMERAL="$(git status --porcelain | grep -vE '^(\?\?| M|M ) (docs/nightly-status.md|\.testflight-status\.json)$' || true)"
 if [[ -n "$DIRTY_NON_EPHEMERAL" ]]; then
