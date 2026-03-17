@@ -5,6 +5,7 @@ import MultipeerConnectivity
 import CoreMotion
 import CoreBluetooth
 import UIKit
+import AVFoundation
 
 struct ContentView: View {
     @AppStorage("hasSeenOnboarding") private var hasSeenOnboarding = false
@@ -26,16 +27,16 @@ struct ContentView: View {
                         Spacer()
                         Button {
                             withAnimation(.easeInOut(duration: 0.25)) {
-                                proximityManager.isGrainfieldEnabled.toggle()
+                                proximityManager.toggleGrainfieldMode()
                             }
                         } label: {
                             HStack(spacing: 6) {
                                 Circle()
-                                    .fill(proximityManager.isGrainfieldEnabled
+                                    .fill(proximityManager.isGrainfieldActive
                                           ? Color(red: 0.4, green: 0.85, blue: 0.55)
                                           : Color.white.opacity(0.3))
                                     .frame(width: 8, height: 8)
-                                Text(proximityManager.isGrainfieldEnabled ? "Grainfield" : "Nearfield")
+                                Text(proximityManager.grainfieldStatusLabel)
                                     .font(.system(size: 12, weight: .semibold, design: .monospaced))
                                     .foregroundStyle(.white.opacity(0.85))
                             }
@@ -46,7 +47,7 @@ struct ContentView: View {
                                     .fill(Color.black.opacity(0.5))
                                     .overlay(
                                         Capsule()
-                                            .stroke(proximityManager.isGrainfieldEnabled
+                                            .stroke(proximityManager.isGrainfieldActive
                                                     ? Color(red: 0.4, green: 0.85, blue: 0.55).opacity(0.4)
                                                     : Color.white.opacity(0.1), lineWidth: 1)
                                     )
@@ -444,20 +445,41 @@ struct DebugSnapshot: Codable {
     var uwbState: String
     var connectivityState: String
     var grainfieldMode: String
+    var grainfieldBufferAge: Float
+    var grainfieldRate: Float
     var peers: [String: PeerDebugData]
 
     static let empty = DebugSnapshot(
         uwbState: "idle",
         connectivityState: "idle",
         grainfieldMode: "Nearfield fallback",
+        grainfieldBufferAge: -1,
+        grainfieldRate: 0,
         peers: [:]
     )
+}
+
+private struct AudioBufferPayload: Codable {
+    var pcmData: Data
+    var sampleRate: Double
+    var channelCount: Int
+    var bufferDuration: Double
+    var sentAt: Double
 }
 
 private struct SessionPayload: Codable {
     var kind: String
     var displayName: String?
     var tokenData: Data?
+    var audioBuffer: AudioBufferPayload?
+}
+
+private struct GrainfieldBridgePayload: Codable {
+    var base64: String
+    var sampleRate: Double
+    var channelCount: Int
+    var bufferDuration: Double
+    var sentAt: Double
 }
 
 // MARK: - WebView Container
@@ -482,6 +504,7 @@ struct WebViewContainer: UIViewRepresentable {
         }
 
         context.coordinator.webView = webView
+        proximityManager.attachWebView(webView)
         return webView
     }
 
@@ -510,7 +533,10 @@ struct WebViewContainer: UIViewRepresentable {
             debug: \(debugJSON),
             tiltX: \(proximityManager.tiltX),
             tiltY: \(proximityManager.tiltY),
-            grainfieldEnabled: \(proximityManager.isGrainfieldEnabled ? "true" : "false")
+            grainfieldEnabled: \(proximityManager.isGrainfieldActive ? "true" : "false"),
+            grainfieldRole: "\(proximityManager.grainfieldRoleIdentifier)",
+            grainfieldBufferAge: \(proximityManager.grainfieldBufferAge),
+            grainRate: \(proximityManager.grainRate)
         });
         """
         webView.evaluateJavaScript(js, completionHandler: nil)
@@ -548,6 +574,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var debugSnapshot: DebugSnapshot = .empty
     @Published var transientStatusText: String?
     @Published var isGrainfieldEnabled: Bool = false
+    @Published var isGrainfieldListening: Bool = false
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -566,12 +593,53 @@ class ProximityManager: NSObject, ObservableObject {
     private let discoveryFeedback = UIImpactFeedbackGenerator(style: .light)
     private let proximityFeedback = UIImpactFeedbackGenerator(style: .soft)
     private let disconnectFeedback = UINotificationFeedbackGenerator()
+    private let audioEngine = AVAudioEngine()
+    private var audioConverter: AVAudioConverter?
+    private let grainfieldBus = DispatchQueue(label: "nearfield.grainfield.audio")
+    private weak var webView: WKWebView?
 
     private var didStartMotion = false
     private var didStartConnectivity = false
     private var didStartExperience = false
     private var lastProximityPulseDate = Date.distantPast
     private var needsReconnect = false
+    private var grainfieldChunkDuration: TimeInterval = 2.0
+    private let grainfieldSampleRate: Double = 44_100
+    private var grainfieldAccumulatedSamples: [Float] = []
+    private var lastGrainfieldBufferDate: Date?
+
+    var isGrainfieldPrimary: Bool {
+        isGrainfieldEnabled
+    }
+
+    var isGrainfieldActive: Bool {
+        isGrainfieldEnabled || isGrainfieldListening
+    }
+
+    var grainfieldRoleIdentifier: String {
+        if isGrainfieldPrimary { return "primary" }
+        if isGrainfieldListening { return "listening" }
+        return "inactive"
+    }
+
+    var grainfieldStatusLabel: String {
+        if isGrainfieldPrimary { return "Grainfield (Primary)" }
+        if isGrainfieldListening { return "Grainfield (Listening)" }
+        return "Nearfield"
+    }
+
+    var grainfieldBufferAge: Float {
+        guard let lastGrainfieldBufferDate else { return -1 }
+        return Float(Date().timeIntervalSince(lastGrainfieldBufferDate))
+    }
+
+    var grainRate: Float {
+        guard isGrainfieldActive else { return 0 }
+        let peerFactor = max(Float(peerCount), 1)
+        let distance = nearestDistance > 0 ? nearestDistance : 1.6
+        let proximity = max(0, min(1, 1 - (distance / 3.0)))
+        return 8 + (peerFactor * 3) + (proximity * 12)
+    }
 
     override init() {
         localDisplayName = Self.storedDisplayName()
@@ -593,6 +661,26 @@ class ProximityManager: NSObject, ObservableObject {
         guard !trimmed.isEmpty else { return }
         localDisplayName = trimmed
         UserDefaults.standard.set(trimmed, forKey: Self.displayNameDefaultsKey)
+    }
+
+    func attachWebView(_ webView: WKWebView) {
+        self.webView = webView
+    }
+
+    func toggleGrainfieldMode() {
+        setGrainfieldEnabled(!isGrainfieldEnabled)
+    }
+
+    func setGrainfieldEnabled(_ enabled: Bool) {
+        guard enabled != isGrainfieldEnabled else { return }
+        isGrainfieldEnabled = enabled
+        if enabled {
+            isGrainfieldListening = false
+            requestMicrophoneAccessAndStartCapture()
+        } else {
+            stopGrainfieldCapture()
+        }
+        updateDebugSnapshot()
     }
 
     private func prepareHaptics() {
@@ -680,6 +768,7 @@ class ProximityManager: NSObject, ObservableObject {
 
     func stop() {
         motionManager.stopDeviceMotionUpdates()
+        stopGrainfieldCapture()
         niSession?.invalidate()
         mcAdvertiser?.stopAdvertisingPeer()
         mcBrowser?.stopBrowsingForPeers()
@@ -697,7 +786,7 @@ class ProximityManager: NSObject, ObservableObject {
 
         do {
             let tokenData = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
-            let payload = SessionPayload(kind: "token", displayName: nil, tokenData: tokenData)
+            let payload = SessionPayload(kind: "token", displayName: nil, tokenData: tokenData, audioBuffer: nil)
             let data = try JSONEncoder().encode(payload)
             try mcSession?.send(data, toPeers: [peer], with: .reliable)
             print("Sent discovery token to \(peer.displayName)")
@@ -708,7 +797,7 @@ class ProximityManager: NSObject, ObservableObject {
 
     private func shareSessionMetadata(with peer: MCPeerID) {
         do {
-            let payload = SessionPayload(kind: "metadata", displayName: localDisplayName, tokenData: nil)
+            let payload = SessionPayload(kind: "metadata", displayName: localDisplayName, tokenData: nil, audioBuffer: nil)
             let data = try JSONEncoder().encode(payload)
             try mcSession?.send(data, toPeers: [peer], with: .reliable)
             print("Sent display name to \(peer.displayName)")
@@ -727,6 +816,170 @@ class ProximityManager: NSObject, ObservableObject {
         }
 
         updateDebugSnapshot()
+    }
+
+    private func requestMicrophoneAccessAndStartCapture() {
+        let session = AVAudioSession.sharedInstance()
+        switch session.recordPermission {
+        case .granted:
+            startGrainfieldCapture()
+        case .denied:
+            DispatchQueue.main.async {
+                self.isGrainfieldEnabled = false
+                self.updateDebugSnapshot()
+            }
+        case .undetermined:
+            session.requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if granted {
+                        self.startGrainfieldCapture()
+                    } else {
+                        self.isGrainfieldEnabled = false
+                        self.updateDebugSnapshot()
+                    }
+                }
+            }
+        @unknown default:
+            isGrainfieldEnabled = false
+            updateDebugSnapshot()
+        }
+    }
+
+    private func startGrainfieldCapture() {
+        grainfieldBus.async {
+            guard !self.audioEngine.isRunning else { return }
+
+            let audioSession = AVAudioSession.sharedInstance()
+            do {
+                try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothA2DP, .mixWithOthers])
+                try audioSession.setPreferredSampleRate(self.grainfieldSampleRate)
+                try audioSession.setPreferredIOBufferDuration(0.023)
+                try audioSession.setActive(true, options: [])
+            } catch {
+                print("Failed to configure AVAudioSession: \(error)")
+                DispatchQueue.main.async {
+                    self.isGrainfieldEnabled = false
+                    self.updateDebugSnapshot()
+                }
+                return
+            }
+
+            let inputNode = self.audioEngine.inputNode
+            let inputFormat = inputNode.inputFormat(forBus: 0)
+            guard let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                                   sampleRate: self.grainfieldSampleRate,
+                                                   channels: 1,
+                                                   interleaved: false) else {
+                return
+            }
+
+            self.audioConverter = AVAudioConverter(from: inputFormat, to: outputFormat)
+            self.grainfieldAccumulatedSamples.removeAll(keepingCapacity: true)
+            inputNode.removeTap(onBus: 0)
+            inputNode.installTap(onBus: 0, bufferSize: 2_048, format: inputFormat) { [weak self] buffer, _ in
+                self?.handleCapturedAudioBuffer(buffer)
+            }
+
+            self.audioEngine.prepare()
+            do {
+                try self.audioEngine.start()
+                DispatchQueue.main.async {
+                    self.updateDebugSnapshot()
+                }
+            } catch {
+                print("Failed to start AVAudioEngine: \(error)")
+                inputNode.removeTap(onBus: 0)
+                DispatchQueue.main.async {
+                    self.isGrainfieldEnabled = false
+                    self.updateDebugSnapshot()
+                }
+            }
+        }
+    }
+
+    private func stopGrainfieldCapture() {
+        grainfieldBus.async {
+            let inputNode = self.audioEngine.inputNode
+            inputNode.removeTap(onBus: 0)
+            self.audioEngine.stop()
+            self.audioConverter = nil
+            self.grainfieldAccumulatedSamples.removeAll(keepingCapacity: false)
+        }
+    }
+
+    private func handleCapturedAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        guard isGrainfieldEnabled,
+              let outputFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                               sampleRate: grainfieldSampleRate,
+                                               channels: 1,
+                                               interleaved: false),
+              let convertedBuffer = convertToGrainfieldBuffer(buffer, outputFormat: outputFormat),
+              let channelData = convertedBuffer.floatChannelData?.pointee else {
+            return
+        }
+
+        let frameCount = Int(convertedBuffer.frameLength)
+        grainfieldAccumulatedSamples.append(contentsOf: UnsafeBufferPointer(start: channelData, count: frameCount))
+
+        let chunkSize = Int(grainfieldSampleRate * grainfieldChunkDuration)
+        guard grainfieldAccumulatedSamples.count >= chunkSize else { return }
+
+        let chunk = Array(grainfieldAccumulatedSamples.prefix(chunkSize))
+        grainfieldAccumulatedSamples.removeFirst(chunkSize)
+        sendGrainfieldChunk(chunk)
+    }
+
+    private func convertToGrainfieldBuffer(_ buffer: AVAudioPCMBuffer, outputFormat: AVAudioFormat) -> AVAudioPCMBuffer? {
+        guard let audioConverter else { return nil }
+
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * outputFormat.sampleRate / buffer.format.sampleRate) + 32
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: capacity) else {
+            return nil
+        }
+
+        var error: NSError?
+        var didProvideInput = false
+        let status = audioConverter.convert(to: outputBuffer, error: &error) { _, outStatus in
+            if didProvideInput {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            didProvideInput = true
+            outStatus.pointee = .haveData
+            return buffer
+        }
+
+        guard status != .error else {
+            if let error {
+                print("Audio conversion failed: \(error)")
+            }
+            return nil
+        }
+
+        return outputBuffer
+    }
+
+    private func sendGrainfieldChunk(_ samples: [Float]) {
+        let pcmData = samples.withUnsafeBufferPointer { Data(buffer: $0) }
+        let payload = AudioBufferPayload(
+            pcmData: pcmData,
+            sampleRate: grainfieldSampleRate,
+            channelCount: 1,
+            bufferDuration: grainfieldChunkDuration,
+            sentAt: Date().timeIntervalSince1970
+        )
+
+        do {
+            let sessionPayload = SessionPayload(kind: "audioBuffer", displayName: localDisplayName, tokenData: nil, audioBuffer: payload)
+            let encoded = try JSONEncoder().encode(sessionPayload)
+            if let mcSession, !mcSession.connectedPeers.isEmpty {
+                try mcSession.send(encoded, toPeers: mcSession.connectedPeers, with: .unreliable)
+            }
+            handleIncomingAudioBuffer(payload, from: peerID)
+        } catch {
+            print("Failed to send Grainfield buffer: \(error)")
+        }
     }
 
     private func resolvedDisplayName(for peer: MCPeerID) -> String {
@@ -803,9 +1056,51 @@ class ProximityManager: NSObject, ObservableObject {
         debugSnapshot = DebugSnapshot(
             uwbState: debugSnapshot.uwbState,
             connectivityState: connectivitySummary,
-            grainfieldMode: isGrainfieldEnabled ? "Grainfield active" : "Nearfield fallback",
+            grainfieldMode: isGrainfieldPrimary ? "Grainfield primary" : (isGrainfieldListening ? "Grainfield listening" : "Nearfield fallback"),
+            grainfieldBufferAge: grainfieldBufferAge,
+            grainfieldRate: grainRate,
             peers: peerDebug
         )
+    }
+
+    private func handleIncomingAudioBuffer(_ audioBuffer: AudioBufferPayload, from peer: MCPeerID) {
+        DispatchQueue.main.async {
+            self.lastGrainfieldBufferDate = Date()
+            if !self.isGrainfieldPrimary {
+                self.isGrainfieldListening = true
+            }
+            self.updateDebugSnapshot()
+            self.pushAudioBufferToWebView(audioBuffer, from: peer)
+        }
+    }
+
+    private func pushAudioBufferToWebView(_ audioBuffer: AudioBufferPayload, from peer: MCPeerID) {
+        guard let webView else { return }
+
+        let bridgePayload = GrainfieldBridgePayload(
+            base64: audioBuffer.pcmData.base64EncodedString(),
+            sampleRate: audioBuffer.sampleRate,
+            channelCount: audioBuffer.channelCount,
+            bufferDuration: audioBuffer.bufferDuration,
+            sentAt: audioBuffer.sentAt
+        )
+
+        guard let jsonData = try? JSONEncoder().encode(bridgePayload),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+
+        let sourceName = resolvedDisplayName(for: peer)
+        let js = "window.receiveGrainfieldBuffer(\(jsonString), \(jsonStringLiteral(sourceName)));"
+        webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    private func jsonStringLiteral(_ value: String) -> String {
+        guard let data = try? JSONEncoder().encode(value),
+              let json = String(data: data, encoding: .utf8) else {
+            return "\"\""
+        }
+        return json
     }
 
     func handleAppBackground() {
@@ -841,6 +1136,8 @@ class ProximityManager: NSObject, ObservableObject {
         peerSuccessCounts.removeAll()
         peerMissCounts.removeAll()
         peersData.removeAll()
+        isGrainfieldListening = false
+        lastGrainfieldBufferDate = nil
         updateNearestDistance()
 
         transientStatusText = "Reconnecting..."
@@ -993,6 +1290,10 @@ extension ProximityManager: MCSessionDelegate {
                         debugSnapshot.uwbState = "token exchanged"
                         updateDebugSnapshot()
                         print("Configured NI with \(peerID.displayName)")
+                    }
+                case "audioBuffer":
+                    if let audioBuffer = payload.audioBuffer {
+                        handleIncomingAudioBuffer(audioBuffer, from: peerID)
                     }
                 default:
                     break

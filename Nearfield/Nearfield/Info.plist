@@ -33,6 +33,8 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>This app uses local network to find other Nearfield devices nearby.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Nearfield uses the microphone in Grainfield mode to capture live audio and stream it to nearby devices.</string>
 	<key>NSNearbyInteractionAllowOnceUsageDescription</key>
 	<string>This app uses Nearby Interaction to detect the distance to other phones for the sound installation.</string>
 	<key>NSNearbyInteractionUsageDescription</key>
