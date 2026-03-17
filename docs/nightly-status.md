@@ -1367,3 +1367,6 @@
 - [2026-03-17 10:02:13 PDT] No pending task in queue; exiting cleanly
 - [2026-03-17 10:02:34 PDT] Overnight loop start (branch=sonny/setup-check)
 - [2026-03-17 10:02:34 PDT] Preflight failed. See /tmp/nearfield-preflight.log
+- [2026-03-17 10:03:00 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-17 10:03:00 PDT] Preflight passed
+- [2026-03-17 10:03:00 PDT] No pending task in queue; exiting cleanly
