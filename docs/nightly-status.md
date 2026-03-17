@@ -1240,3 +1240,12 @@
 - [2026-03-16 22:59:05 PDT] Preflight passed
 - [2026-03-16 22:59:05 PDT] Picked task onboarding-flow (P0) owner=overnight
 - [2026-03-16 22:59:05 PDT] Task onboarding-flow failed (rc=2). See /tmp/nearfield-task.log
+- [2026-03-16 23:29:04 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-16 23:29:04 PDT] Preflight passed
+- [2026-03-16 23:29:04 PDT] No pending task in queue; exiting cleanly
+- [2026-03-16 23:32:22 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-16 23:32:22 PDT] Preflight passed
+- [2026-03-16 23:32:22 PDT] No pending task in queue; exiting cleanly
+- [2026-03-16 23:33:22 PDT] Overnight loop start (branch=sonny/setup-check)
+- [2026-03-16 23:33:22 PDT] Preflight passed
+- [2026-03-16 23:33:22 PDT] No pending task in queue; exiting cleanly
