@@ -57,6 +57,8 @@ private struct OnboardingView: View {
     @State private var isBusy = false
     @State private var pulse = false
     @State private var finishTask: Task<Void, Never>?
+    @State private var displayName: String = ProximityManager.storedDisplayName()
+    @FocusState private var isNameFocused: Bool
 
     var body: some View {
         ZStack {
@@ -121,6 +123,36 @@ private struct OnboardingView: View {
                         .padding(.horizontal, 28)
                 }
 
+                if stage == .concept {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Display name")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.58))
+                            .textCase(.uppercase)
+                            .tracking(1.3)
+
+                        TextField("Choose a name", text: $displayName)
+                            .textInputAutocapitalization(.words)
+                            .disableAutocorrection(true)
+                            .focused($isNameFocused)
+                            .submitLabel(.continue)
+                            .onSubmit(handlePrimaryAction)
+                            .font(.system(size: 18, weight: .medium, design: .rounded))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 18)
+                            .frame(height: 56)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill(Color.white.opacity(0.08))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    }
+                    .padding(.horizontal, 28)
+                }
+
                 if stage != .searching {
                     Button(action: handlePrimaryAction) {
                         HStack(spacing: 10) {
@@ -141,7 +173,7 @@ private struct OnboardingView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .disabled(isBusy)
+                    .disabled(isBusy || (stage == .concept && trimmedDisplayName.isEmpty))
                     .padding(.horizontal, 28)
                 } else {
                     VStack(spacing: 10) {
@@ -176,6 +208,11 @@ private struct OnboardingView: View {
         .onDisappear {
             finishTask?.cancel()
         }
+        .onAppear {
+            if stage == .concept && displayName == ProximityManager.storedDisplayName() {
+                isNameFocused = displayName.isEmpty
+            }
+        }
     }
 
     private var searchingFootnote: String {
@@ -185,11 +222,18 @@ private struct OnboardingView: View {
         return "Bring another phone close to start weaving harmonics."
     }
 
+    private var trimmedDisplayName: String {
+        displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func handlePrimaryAction() {
         guard !isBusy else { return }
 
         switch stage {
         case .concept:
+            guard !trimmedDisplayName.isEmpty else { return }
+            proximityManager.saveLocalDisplayName(trimmedDisplayName)
+            isNameFocused = false
             advance()
         case .nearbyInteraction:
             runStep {
@@ -318,6 +362,12 @@ struct PeerData: Codable {
     var horizontalAngle: Float
 }
 
+private struct SessionPayload: Codable {
+    var kind: String
+    var displayName: String?
+    var tokenData: Data?
+}
+
 // MARK: - WebView Container
 struct WebViewContainer: UIViewRepresentable {
     @ObservedObject var proximityManager: ProximityManager
@@ -386,6 +436,8 @@ struct WebViewContainer: UIViewRepresentable {
 
 // MARK: - Proximity Manager with Direction + Tilt
 class ProximityManager: NSObject, ObservableObject {
+    static let displayNameDefaultsKey = "nearfieldDisplayName"
+
     @Published var nearestDistance: Float = -1
     @Published var peerCount: Int = 0
     @Published var peersData: [String: PeerData] = [:]
@@ -398,9 +450,11 @@ class ProximityManager: NSObject, ObservableObject {
     private var mcBrowser: MCNearbyServiceBrowser?
     private var bluetoothManager: CBCentralManager?
     private var peerID: MCPeerID!
+    private var localDisplayName: String
 
     private let serviceType = "nearfield"
     private var peerTokens: [MCPeerID: NIDiscoveryToken] = [:]
+    private var peerDisplayNames: [MCPeerID: String] = [:]
     private let motionManager = CMMotionManager()
 
     private var didStartMotion = false
@@ -408,8 +462,25 @@ class ProximityManager: NSObject, ObservableObject {
     private var didStartExperience = false
 
     override init() {
+        localDisplayName = Self.storedDisplayName()
         super.init()
         peerID = MCPeerID(displayName: UIDevice.current.name)
+    }
+
+    static func storedDisplayName() -> String {
+        let savedName = UserDefaults.standard.string(forKey: displayNameDefaultsKey)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let savedName, !savedName.isEmpty {
+            return savedName
+        }
+        return UIDevice.current.name
+    }
+
+    func saveLocalDisplayName(_ name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        localDisplayName = trimmed
+        UserDefaults.standard.set(trimmed, forKey: Self.displayNameDefaultsKey)
     }
 
     func prepareNearbyInteraction() {
@@ -500,11 +571,24 @@ class ProximityManager: NSObject, ObservableObject {
         guard let token = niSession?.discoveryToken else { return }
 
         do {
-            let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+            let tokenData = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
+            let payload = SessionPayload(kind: "token", displayName: nil, tokenData: tokenData)
+            let data = try JSONEncoder().encode(payload)
             try mcSession?.send(data, toPeers: [peer], with: .reliable)
             print("Sent discovery token to \(peer.displayName)")
         } catch {
             print("Failed to send discovery token: \(error)")
+        }
+    }
+
+    private func shareSessionMetadata(with peer: MCPeerID) {
+        do {
+            let payload = SessionPayload(kind: "metadata", displayName: localDisplayName, tokenData: nil)
+            let data = try JSONEncoder().encode(payload)
+            try mcSession?.send(data, toPeers: [peer], with: .reliable)
+            print("Sent display name to \(peer.displayName)")
+        } catch {
+            print("Failed to send display name: \(error)")
         }
     }
 
@@ -515,6 +599,25 @@ class ProximityManager: NSObject, ObservableObject {
         } else {
             nearestDistance = peersData.values.map(\.distance).min() ?? -1
             peerCount = peersData.count
+        }
+    }
+
+    private func resolvedDisplayName(for peer: MCPeerID) -> String {
+        peerDisplayNames[peer] ?? peer.displayName
+    }
+
+    private func registerDisplayName(_ displayName: String, for peer: MCPeerID) {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        DispatchQueue.main.async {
+            let previousName = self.peerDisplayNames[peer] ?? peer.displayName
+            self.peerDisplayNames[peer] = trimmed
+
+            if previousName != trimmed, let data = self.peersData.removeValue(forKey: previousName) {
+                self.peersData[trimmed] = data
+                self.updateNearestDistance()
+            }
         }
     }
 }
@@ -537,7 +640,7 @@ extension ProximityManager: NISessionDelegate {
                     }
 
                     DispatchQueue.main.async {
-                        self.peersData[peer.displayName] = PeerData(
+                        self.peersData[self.resolvedDisplayName(for: peer)] = PeerData(
                             distance: distance,
                             directionX: direction.x,
                             directionY: direction.y,
@@ -559,7 +662,7 @@ extension ProximityManager: NISessionDelegate {
                    let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
                    tokenData == objectTokenData {
                     DispatchQueue.main.async {
-                        self.peersData.removeValue(forKey: peer.displayName)
+                        self.peersData.removeValue(forKey: self.resolvedDisplayName(for: peer))
                         self.updateNearestDistance()
                     }
                     break
@@ -591,12 +694,15 @@ extension ProximityManager: MCSessionDelegate {
         switch state {
         case .connected:
             print("Connected to \(peerID.displayName)")
+            shareSessionMetadata(with: peerID)
             shareDiscoveryToken(with: peerID)
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
             DispatchQueue.main.async {
-                self.peersData.removeValue(forKey: peerID.displayName)
+                let peerName = self.resolvedDisplayName(for: peerID)
+                self.peersData.removeValue(forKey: peerName)
                 self.peerTokens.removeValue(forKey: peerID)
+                self.peerDisplayNames.removeValue(forKey: peerID)
                 self.updateNearestDistance()
             }
         case .connecting:
@@ -608,6 +714,26 @@ extension ProximityManager: MCSessionDelegate {
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         do {
+            if let payload = try? JSONDecoder().decode(SessionPayload.self, from: data) {
+                switch payload.kind {
+                case "metadata":
+                    if let displayName = payload.displayName {
+                        registerDisplayName(displayName, for: peerID)
+                    }
+                case "token":
+                    if let tokenData = payload.tokenData,
+                       let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: tokenData) {
+                        peerTokens[peerID] = token
+                        let config = NINearbyPeerConfiguration(peerToken: token)
+                        niSession?.run(config)
+                        print("Configured NI with \(peerID.displayName)")
+                    }
+                default:
+                    break
+                }
+                return
+            }
+
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
                 peerTokens[peerID] = token
                 let config = NINearbyPeerConfiguration(peerToken: token)

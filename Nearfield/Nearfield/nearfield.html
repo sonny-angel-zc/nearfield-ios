@@ -77,6 +77,9 @@
         .scene-container canvas {
             width: 100% !important;
             height: 100% !important;
+            position: absolute;
+            inset: 0;
+            z-index: 1;
         }
 
         .ambient-glow {
@@ -88,6 +91,29 @@
             opacity: 0;
             transition: opacity 0.4s ease;
             mix-blend-mode: screen;
+            z-index: 0;
+        }
+
+        .peer-label-layer {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .peer-label {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(6, 10, 20, 0.58);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: rgba(255, 255, 255, 0.88);
+            font-size: 0.68rem;
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            backdrop-filter: blur(10px);
+            transition: opacity 0.28s ease, transform 0.28s ease;
         }
 
         /* Info display */
@@ -322,6 +348,7 @@
 
         <div class="scene-container" id="sceneContainer">
             <div class="ambient-glow" id="ambientGlow"></div>
+            <div class="peer-label-layer" id="peerLabelLayer"></div>
         </div>
 
         <div class="info-row">
@@ -410,6 +437,7 @@
         let peerSpheres = {};
         let distanceRings = [];
         let peerParticles = {}; // name → { group, particles }
+        let peerLabels = {};
         let compassGroup;  // Group that rotates with device tilt
 
         const MAX_RANGE = 5;  // 5 meters max range
@@ -632,7 +660,7 @@
             const peers = nativeData.peers || {};
             const currentPeerNames = new Set(Object.keys(peers));
 
-            // Remove spheres and lines for peers that left
+            // Remove peer visuals for peers that left
             for (const name of Object.keys(peerSpheres)) {
                 if (!currentPeerNames.has(name)) {
                     compassGroup.remove(peerSpheres[name]);
@@ -644,6 +672,10 @@
                             particle.geometry.dispose();
                         });
                         delete peerParticles[name];
+                    }
+                    if (peerLabels[name]) {
+                        peerLabels[name].remove();
+                        delete peerLabels[name];
                     }
                 }
             }
@@ -775,6 +807,49 @@
             }
         }
 
+        function updatePeerLabels() {
+            const container = document.getElementById('sceneContainer');
+            const labelLayer = document.getElementById('peerLabelLayer');
+            if (!container || !labelLayer || !camera) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const activeNames = new Set(Object.keys(peerSpheres));
+
+            for (const [name, sphere] of Object.entries(peerSpheres)) {
+                if (!peerLabels[name]) {
+                    const label = document.createElement('div');
+                    label.className = 'peer-label';
+                    label.textContent = name;
+                    labelLayer.appendChild(label);
+                    peerLabels[name] = label;
+                }
+
+                const worldPosition = new THREE.Vector3();
+                sphere.getWorldPosition(worldPosition);
+                worldPosition.project(camera);
+
+                const x = (worldPosition.x * 0.5 + 0.5) * width;
+                const y = (-worldPosition.y * 0.5 + 0.5) * height - 22;
+                const visible = worldPosition.z < 1;
+
+                peerLabels[name].textContent = name;
+                peerLabels[name].style.left = `${x.toFixed(1)}px`;
+                peerLabels[name].style.top = `${y.toFixed(1)}px`;
+                peerLabels[name].style.opacity = visible ? '1' : '0';
+                peerLabels[name].style.transform = visible
+                    ? 'translate(-50%, -50%)'
+                    : 'translate(-50%, -42%)';
+            }
+
+            for (const name of Object.keys(peerLabels)) {
+                if (!activeNames.has(name)) {
+                    peerLabels[name].remove();
+                    delete peerLabels[name];
+                }
+            }
+        }
+
         function animate() {
             requestAnimationFrame(animate);
             const now = performance.now() * 0.001;
@@ -810,6 +885,7 @@
 
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
+                updatePeerLabels();
             }
         }
 
