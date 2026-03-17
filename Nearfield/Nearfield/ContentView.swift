@@ -17,7 +17,7 @@ struct ContentView: View {
 
             if hasSeenOnboarding {
                 WebViewContainer(proximityManager: proximityManager)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(edges: [.top, .horizontal])
                     .transition(.opacity)
 
                 // Grainfield mode toggle
