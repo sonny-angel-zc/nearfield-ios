@@ -661,43 +661,6 @@
             const centerGlow = new THREE.Mesh(glowGeometry, glowMaterial);
             centerSphere.add(centerGlow);
 
-            // Compass tick marks (cardinal directions on outer ring)
-            const outerRadius = 5 * SCALE;
-            const tickLength = 0.12;
-            [
-                { angle: 0, label: '▲' },            // Forward (top)
-                { angle: Math.PI, label: '▼' },       // Behind
-                { angle: Math.PI / 2, label: '▶' },   // Right
-                { angle: -Math.PI / 2, label: '◀' },  // Left
-            ].forEach(({ angle }) => {
-                const tickGeo = new THREE.PlaneGeometry(0.02, tickLength);
-                const tickMat = new THREE.MeshBasicMaterial({
-                    color: 0x4a9eff,
-                    transparent: true,
-                    opacity: 0.35,
-                    side: THREE.DoubleSide
-                });
-                const tick = new THREE.Mesh(tickGeo, tickMat);
-                tick.rotation.x = -Math.PI / 2;
-                const r = outerRadius + tickLength * 0.6;
-                tick.position.set(Math.sin(angle) * r, 0, -Math.cos(angle) * r);
-                tick.rotation.z = -angle;
-                compassGroup.add(tick);
-            });
-
-            // Forward indicator (brighter, larger tick)
-            const fwdGeo = new THREE.PlaneGeometry(0.04, tickLength * 1.4);
-            const fwdMat = new THREE.MeshBasicMaterial({
-                color: 0x4a9eff,
-                transparent: true,
-                opacity: 0.6,
-                side: THREE.DoubleSide
-            });
-            const fwdTick = new THREE.Mesh(fwdGeo, fwdMat);
-            fwdTick.rotation.x = -Math.PI / 2;
-            fwdTick.position.set(0, 0, -(outerRadius + tickLength * 0.6));
-            compassGroup.add(fwdTick);
-
             // Distance rings (at 1m, 2m, 3m, 4m, 5m)
             [1, 2, 3, 4, 5].forEach((meters, i) => {
                 const radius = meters * SCALE;
@@ -823,48 +786,16 @@
                     compassGroup.add(peerParticles[name].group);
                 }
 
-                // Calculate 2D compass position (full 360°)
-                // Distance maps to radius in the scene
+                // Place peers on radar by distance only
+                // Distribute evenly around the circle, sorted by name for stability
                 const clampedDistance = Math.min(peer.distance, MAX_RANGE);
                 const radius = clampedDistance * SCALE;
-                let angle = 0; // radians, 0 = forward, positive = right
-                let hasAngle = false;
-                let y = 0;
+                const y = 0;
 
-                // Prefer horizontalAngle for compass bearing (full 360°)
-                if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
-                    angle = peer.horizontalAngle;
-                    hasAngle = true;
-                }
-
-                // Fall back to direction vector for angle
-                if (!hasAngle) {
-                    const hasDirection = peer.directionX !== undefined &&
-                        peer.directionZ !== undefined;
-                    const dxz = hasDirection ? Math.sqrt(
-                        peer.directionX ** 2 + peer.directionZ ** 2
-                    ) : 0;
-
-                    if (dxz > 0.01) {
-                        angle = Math.atan2(peer.directionX, -peer.directionZ);
-                        hasAngle = true;
-                        // Use Y direction for slight vertical offset
-                        if (peer.directionY !== undefined) {
-                            const mag = Math.sqrt(peer.directionX ** 2 + peer.directionY ** 2 + peer.directionZ ** 2);
-                            if (mag > 0.01) {
-                                y = (peer.directionY / mag) * radius * 0.3;
-                            }
-                        }
-                    }
-                }
-
-                // If no direction info at all, distribute evenly around circle
-                if (!hasAngle) {
-                    const peerNames = Object.keys(nativeData.peers || {}).sort();
-                    const idx = peerNames.indexOf(name);
-                    const total = peerNames.length || 1;
-                    angle = (idx / total) * Math.PI * 2;
-                }
+                const peerNames = Object.keys(nativeData.peers || {}).sort();
+                const idx = peerNames.indexOf(name);
+                const total = peerNames.length || 1;
+                const angle = (idx / total) * Math.PI * 2;
 
                 const x = Math.sin(angle) * radius;
                 const z = -Math.cos(angle) * radius;
@@ -1212,13 +1143,12 @@
                 const baseGain = exponentialGain(peer.distance, 5.0, 0.2) * warmupShape;
                 smoothParam(pa.gain.gain, baseGain, 0.26);
 
-                // Spatial panning from direction data
-                let panValue = 0;
-                if (peer.horizontalAngle !== undefined && peer.horizontalAngle !== 0) {
-                    panValue = Math.max(-1, Math.min(1, Math.sin(peer.horizontalAngle)));
-                } else if (peer.directionX !== undefined) {
-                    panValue = Math.max(-1, Math.min(1, peer.directionX));
-                }
+                // Stereo panning based on visual position in the radar
+                const peerNames = Object.keys(nativeData.peers || {}).sort();
+                const pIdx = peerNames.indexOf(name);
+                const pTotal = peerNames.length || 1;
+                const pAngle = (pIdx / pTotal) * Math.PI * 2;
+                const panValue = Math.sin(pAngle) * 0.6;
                 smoothParam(pa.panner.pan, panValue, 0.14);
 
                 // Low-pass filter opens up as peers get closer (based on 5m range)
