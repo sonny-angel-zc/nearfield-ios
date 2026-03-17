@@ -6,6 +6,15 @@
     <title>Nearfield</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
+        :root {
+            --bg-start: #08101f;
+            --bg-end: #020409;
+            --bg-accent: rgba(39, 72, 138, 0.36);
+            --scene-start: #121a30;
+            --scene-end: #070910;
+            --scene-glow: rgba(74, 158, 255, 0.08);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,11 +23,14 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0f;
+            background:
+                radial-gradient(circle at 20% 20%, var(--bg-accent), transparent 38%),
+                linear-gradient(145deg, var(--bg-start), var(--bg-end));
             color: #e0e0e0;
             min-height: 100vh;
             padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
             overflow: hidden;
+            transition: background 1.6s ease;
         }
 
         .container {
@@ -54,15 +66,28 @@
             margin: 10px 0;
             border-radius: 50%;
             overflow: hidden;
-            background: radial-gradient(circle at 30% 30%, #1a1a24, #0a0a0f);
+            background: radial-gradient(circle at 30% 30%, var(--scene-start), var(--scene-end));
             box-shadow:
-                inset 0 0 60px rgba(74, 158, 255, 0.1),
+                inset 0 0 60px rgba(255, 255, 255, 0.04),
+                inset 0 0 80px var(--scene-glow),
                 0 0 40px rgba(74, 158, 255, 0.05);
+            transition: background 1.2s ease, box-shadow 0.8s ease;
         }
 
         .scene-container canvas {
             width: 100% !important;
             height: 100% !important;
+        }
+
+        .ambient-glow {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            background: radial-gradient(circle, rgba(255, 231, 179, 0.18), transparent 62%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            mix-blend-mode: screen;
         }
 
         /* Info display */
@@ -295,7 +320,9 @@
         <h1>Nearfield</h1>
         <p class="subtitle">Tilt to detune / Get closer for harmonics</p>
 
-        <div class="scene-container" id="sceneContainer"></div>
+        <div class="scene-container" id="sceneContainer">
+            <div class="ambient-glow" id="ambientGlow"></div>
+        </div>
 
         <div class="info-row">
             <div>
@@ -382,7 +409,7 @@
         let centerSphere;
         let peerSpheres = {};
         let distanceRings = [];
-        let peerLines = {};  // name → { line, material }
+        let peerParticles = {}; // name → { group, particles }
         let compassGroup;  // Group that rotates with device tilt
 
         const MAX_RANGE = 5;  // 5 meters max range
@@ -392,6 +419,70 @@
         // Smoothed tilt values
         let smoothTiltX = 0;
         let smoothTiltY = 0;
+
+        function easeInOutCubic(t) {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        }
+
+        function mixColor(a, b, t) {
+            return a.map((value, index) => Math.round(value + (b[index] - value) * t));
+        }
+
+        function colorString(values, alpha = 1) {
+            return alpha === 1
+                ? `rgb(${values[0]}, ${values[1]}, ${values[2]})`
+                : `rgba(${values[0]}, ${values[1]}, ${values[2]}, ${alpha})`;
+        }
+
+        function updateThemeColors() {
+            const count = Math.max(0, nativeData.peerCount || 0);
+            const root = document.documentElement;
+            const cold = { bg: [8, 16, 31], end: [2, 4, 9], accent: [38, 70, 138], scene: [19, 29, 54] };
+            const warmPurple = { bg: [29, 14, 54], end: [8, 5, 18], accent: [117, 74, 183], scene: [42, 18, 70] };
+            const golden = { bg: [62, 34, 18], end: [13, 8, 5], accent: [201, 149, 72], scene: [86, 54, 23] };
+
+            const pairProgress = Math.min(count / 2, 1);
+            const crowdProgress = Math.min(Math.max((count - 2) / 2, 0), 1);
+
+            const firstBlend = {
+                bg: mixColor(cold.bg, warmPurple.bg, pairProgress),
+                end: mixColor(cold.end, warmPurple.end, pairProgress),
+                accent: mixColor(cold.accent, warmPurple.accent, pairProgress),
+                scene: mixColor(cold.scene, warmPurple.scene, pairProgress)
+            };
+
+            const finalBlend = {
+                bg: mixColor(firstBlend.bg, golden.bg, crowdProgress),
+                end: mixColor(firstBlend.end, golden.end, crowdProgress),
+                accent: mixColor(firstBlend.accent, golden.accent, crowdProgress),
+                scene: mixColor(firstBlend.scene, golden.scene, crowdProgress)
+            };
+
+            root.style.setProperty('--bg-start', colorString(finalBlend.bg));
+            root.style.setProperty('--bg-end', colorString(finalBlend.end));
+            root.style.setProperty('--bg-accent', colorString(finalBlend.accent, 0.34));
+            root.style.setProperty('--scene-start', colorString(finalBlend.scene));
+            root.style.setProperty('--scene-end', colorString(finalBlend.end));
+            root.style.setProperty('--scene-glow', colorString(finalBlend.accent, 0.12));
+        }
+
+        function updateAmbientGlow() {
+            const ambientGlow = document.getElementById('ambientGlow');
+            const sceneContainer = document.getElementById('sceneContainer');
+            if (!ambientGlow || !sceneContainer) return;
+
+            const distance = nativeData.nearestDistance;
+            const closeFactor = distance > 0 ? Math.max(0, Math.min(1, 1 - (distance / 1.2))) : 0;
+            const peerFactor = Math.min((nativeData.peerCount || 0) / 4, 1);
+            const intensity = Math.max(closeFactor, peerFactor * 0.5);
+
+            ambientGlow.style.opacity = (0.08 + intensity * 0.42).toFixed(3);
+            sceneContainer.style.boxShadow = `
+                inset 0 0 60px rgba(255, 255, 255, 0.04),
+                inset 0 0 ${80 + intensity * 40}px rgba(255, 214, 140, ${0.08 + intensity * 0.16}),
+                0 0 ${40 + intensity * 30}px rgba(116, 162, 255, ${0.05 + intensity * 0.12})
+            `;
+        }
 
         function initThreeJS() {
             const container = document.getElementById('sceneContainer');
@@ -546,11 +637,13 @@
                 if (!currentPeerNames.has(name)) {
                     compassGroup.remove(peerSpheres[name]);
                     delete peerSpheres[name];
-                    if (peerLines[name]) {
-                        compassGroup.remove(peerLines[name].line);
-                        peerLines[name].material.dispose();
-                        peerLines[name].geometry.dispose();
-                        delete peerLines[name];
+                    if (peerParticles[name]) {
+                        compassGroup.remove(peerParticles[name].group);
+                        peerParticles[name].particles.forEach(particle => {
+                            particle.material.dispose();
+                            particle.geometry.dispose();
+                        });
+                        delete peerParticles[name];
                     }
                 }
             }
@@ -565,6 +658,10 @@
                 }
 
                 const sphere = peerSpheres[name];
+                if (!peerParticles[name]) {
+                    peerParticles[name] = createParticleStream();
+                    compassGroup.add(peerParticles[name].group);
+                }
 
                 // Calculate 3D position from direction vector
                 // Clamp distance to max range
@@ -598,9 +695,9 @@
                 sphere.userData.targetPos.set(x, y, z);
 
                 // Smoothly interpolate position
-                sphere.position.x += (x - sphere.position.x) * 0.2;
-                sphere.position.y += (y - sphere.position.y) * 0.2;
-                sphere.position.z += (z - sphere.position.z) * 0.2;
+                sphere.position.x += (x - sphere.position.x) * 0.14;
+                sphere.position.y += (y - sphere.position.y) * 0.14;
+                sphere.position.z += (z - sphere.position.z) * 0.14;
 
                 // Change color based on proximity
                 const isClose = peer.distance < 0.5;
@@ -614,47 +711,73 @@
                 sphere.userData.glow.material.opacity = isClose ? 0.3 : 0.2;
 
                 // Scale based on proximity (closer = larger)
-                const scale = 0.8 + (1 - Math.min(peer.distance / MAX_RANGE, 1)) * 0.6;
+                const proximity = 1 - Math.min(peer.distance / MAX_RANGE, 1);
+                const scale = 0.82 + proximity * 0.72;
                 sphere.scale.setScalar(scale);
+                peerParticles[name].proximity = proximity;
+            }
+        }
 
-                // Connecting line between center and peer
-                if (!peerLines[name]) {
-                    const lineGeom = new THREE.BufferGeometry();
-                    const positions = new Float32Array(6); // 2 points × 3 coords
-                    lineGeom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-                    const lineMat = new THREE.LineBasicMaterial({
-                        color: 0x4a9eff,
+        function createParticleStream() {
+            const group = new THREE.Group();
+            const particles = [];
+
+            for (let i = 0; i < 16; i++) {
+                const particle = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.016 + Math.random() * 0.016, 10, 10),
+                    new THREE.MeshBasicMaterial({
+                        color: 0x9bc3ff,
                         transparent: true,
-                        opacity: 0.0
-                    });
-                    const line = new THREE.Line(lineGeom, lineMat);
-                    compassGroup.add(line);
-                    peerLines[name] = { line, material: lineMat, geometry: lineGeom };
+                        opacity: 0
+                    })
+                );
+                particle.userData = {
+                    offset: Math.random(),
+                    speed: 0.18 + Math.random() * 0.22,
+                    arc: 0.05 + Math.random() * 0.16,
+                    drift: (Math.random() - 0.5) * 0.22
+                };
+                particles.push(particle);
+                group.add(particle);
+            }
+
+            return { group, particles, proximity: 0 };
+        }
+
+        function updateParticleStreams(time) {
+            for (const [name, stream] of Object.entries(peerParticles)) {
+                const sphere = peerSpheres[name];
+                if (!sphere) continue;
+
+                const end = sphere.position.clone();
+                const proximity = stream.proximity || 0;
+                const pathNormal = new THREE.Vector3(end.z, 0, -end.x);
+                if (pathNormal.lengthSq() < 0.0001) {
+                    pathNormal.set(1, 0, 0);
+                } else {
+                    pathNormal.normalize();
                 }
 
-                // Update line endpoints
-                const pl = peerLines[name];
-                const posAttr = pl.geometry.getAttribute('position');
-                posAttr.array[0] = 0; posAttr.array[1] = 0; posAttr.array[2] = 0; // center
-                posAttr.array[3] = sphere.position.x;
-                posAttr.array[4] = sphere.position.y;
-                posAttr.array[5] = sphere.position.z;
-                posAttr.needsUpdate = true;
+                stream.particles.forEach((particle, index) => {
+                    const phase = (time * particle.userData.speed + particle.userData.offset) % 1;
+                    const eased = easeInOutCubic(phase);
+                    const base = new THREE.Vector3(0, 0, 0).lerp(end, eased);
+                    const wave = Math.sin((phase * Math.PI * 2) + index) * particle.userData.drift;
+                    const arc = Math.sin(phase * Math.PI) * (particle.userData.arc + proximity * 0.18);
 
-                // Line brightness: exponential glow as distance decreases
-                const lineOpacity = Math.pow(1 - Math.min(peer.distance / MAX_RANGE, 1), 2) * 0.8;
-                pl.material.opacity = lineOpacity;
-                // Color shifts from blue to warm white when very close
-                const warmth = Math.pow(1 - Math.min(peer.distance / 1.5, 1), 2);
-                const r = 0x4a + Math.round((0xff - 0x4a) * warmth);
-                const g = 0x9e + Math.round((0xdd - 0x9e) * warmth);
-                const b = 0xff;
-                pl.material.color.setRGB(r / 255, g / 255, b / 255);
+                    base.add(pathNormal.clone().multiplyScalar(wave));
+                    base.y += arc;
+
+                    particle.position.copy(base);
+                    particle.scale.setScalar(0.7 + proximity * 0.9);
+                    particle.material.opacity = (0.08 + proximity * 0.36) * Math.sin(phase * Math.PI);
+                });
             }
         }
 
         function animate() {
             requestAnimationFrame(animate);
+            const now = performance.now() * 0.001;
 
             // Apply device tilt to compass group
             // tiltX = roll (left/right tilt), tiltY = pitch (forward/back tilt)
@@ -681,6 +804,9 @@
 
             // Update peer positions
             updatePeerSpheres();
+            updateParticleStreams(now);
+            updateThemeColors();
+            updateAmbientGlow();
 
             if (renderer && scene && camera) {
                 renderer.render(scene, camera);
@@ -1007,6 +1133,8 @@
             }
 
             updateHarmonics();
+            updateThemeColors();
+            updateAmbientGlow();
         }
 
         function updateDisplay() {
