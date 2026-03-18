@@ -623,7 +623,7 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     var grainfieldStatusLabel: String {
-        if isGrainfieldPrimary { return "Grainfield (Primary)" }
+        if isGrainfieldPrimary { return "Grainfield (Streaming)" }
         if isGrainfieldListening { return "Grainfield (Listening)" }
         return "Nearfield"
     }
@@ -1056,7 +1056,7 @@ class ProximityManager: NSObject, ObservableObject {
         debugSnapshot = DebugSnapshot(
             uwbState: debugSnapshot.uwbState,
             connectivityState: connectivitySummary,
-            grainfieldMode: isGrainfieldPrimary ? "Grainfield primary" : (isGrainfieldListening ? "Grainfield listening" : "Nearfield fallback"),
+            grainfieldMode: isGrainfieldPrimary ? "Grainfield streaming" : (isGrainfieldListening ? "Grainfield listening" : "Nearfield fallback"),
             grainfieldBufferAge: grainfieldBufferAge,
             grainfieldRate: grainRate,
             peers: peerDebug
