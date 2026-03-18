@@ -977,7 +977,6 @@ class ProximityManager: NSObject, ObservableObject {
             if let mcSession, !mcSession.connectedPeers.isEmpty {
                 try mcSession.send(encoded, toPeers: mcSession.connectedPeers, with: .unreliable)
             }
-            handleIncomingAudioBuffer(payload, from: peerID)
         } catch {
             print("Failed to send Grainfield buffer: \(error)")
         }

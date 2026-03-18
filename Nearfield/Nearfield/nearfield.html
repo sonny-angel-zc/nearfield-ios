@@ -1720,6 +1720,18 @@
             param.setTargetAtTime(value, audioCtx.currentTime, timeConstant);
         }
 
+        function isGrainfieldActive() {
+            return !!nativeData.grainfieldEnabled && nativeData.grainfieldRole !== 'inactive';
+        }
+
+        function isGrainfieldListeningRole() {
+            return isGrainfieldActive() && nativeData.grainfieldRole === 'listening';
+        }
+
+        function isGrainfieldPrimaryRole() {
+            return isGrainfieldActive() && nativeData.grainfieldRole === 'primary';
+        }
+
         function setupPeerAudio(peerName, peer) {
             if (peerAudio[peerName]) return; // Already set up
 
@@ -1932,13 +1944,17 @@
 
             if (!isPlaying) {
                 granularEngine.stop();
+                stopHarmonicVoice();
                 return;
             }
 
-            if (nativeData.grainfieldEnabled) {
+            if (isGrainfieldListeningRole()) {
                 stopHarmonicVoice();
                 granularEngine.start();
                 granularEngine.updateParameters(nativeData);
+            } else if (isGrainfieldPrimaryRole()) {
+                granularEngine.stop();
+                stopHarmonicVoice();
             } else {
                 granularEngine.stop();
                 startHarmonicVoice();
@@ -1946,9 +1962,28 @@
             }
         }
 
+        function updatePlayButtonLabel() {
+            const btn = document.getElementById('playButton');
+            if (!btn) return;
+
+            if (!isPlaying) {
+                btn.innerHTML = 'TAP TO<br>PLAY';
+                btn.classList.remove('playing');
+                return;
+            }
+
+            btn.classList.add('playing');
+            if (isGrainfieldPrimaryRole()) {
+                btn.innerHTML = 'STREAMING';
+            } else if (isGrainfieldListeningRole()) {
+                btn.innerHTML = 'LISTENING';
+            } else {
+                btn.innerHTML = 'PLAYING';
+            }
+        }
+
         function togglePlay() {
             initAudio();
-            const btn = document.getElementById('playButton');
 
             if (isPlaying) {
                 stopHarmonicVoice();
@@ -1957,15 +1992,12 @@
                 }
                 stopHarmonics();
                 isPlaying = false;
-                btn.classList.remove('playing');
-                btn.innerHTML = 'TAP TO<br>PLAY';
                 document.getElementById('detuneIndicator').textContent = '';
             } else {
                 isPlaying = true;
-                btn.classList.add('playing');
-                btn.innerHTML = 'PLAYING';
                 syncAudioMode();
             }
+            updatePlayButtonLabel();
         }
 
         // ==================== NATIVE BRIDGE ====================
@@ -1982,6 +2014,7 @@
                 granularEngine.updateParameters(nativeData);
             }
             syncAudioMode();
+            updatePlayButtonLabel();
             updateUI();
             updateTiltDetune();
         }
@@ -1991,7 +2024,7 @@
             if (!granularEngine) return;
             granularEngine.updateBuffer(payload, sourceName);
             granularEngine.updateParameters(nativeData);
-            if (nativeData.grainfieldEnabled && isPlaying) {
+            if (isGrainfieldListeningRole() && isPlaying) {
                 granularEngine.start();
             }
             renderDebugOverlay();
