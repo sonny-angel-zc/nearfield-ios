@@ -889,8 +889,7 @@ class ProximityManager: NSObject, ObservableObject {
             let lastRangeUpdate = peerRangeUpdateDates[peer] ?? .distantPast
             guard Date().timeIntervalSince(lastRangeUpdate) > 2.5 else { continue }
 
-            let config = NINearbyPeerConfiguration(peerToken: token)
-            niSession?.run(config)
+            safeRunNI(with: token)
         }
 
         broadcastGrainfieldRole()
@@ -904,6 +903,14 @@ class ProximityManager: NSObject, ObservableObject {
             options: [CBCentralManagerOptionShowPowerAlertKey: true]
         )
     }
+
+    /// Safely configure NI session for a peer — catches any exceptions
+    private func safeRunNI(with token: NIDiscoveryToken) {
+        guard let niSession else { return }
+        let config = NINearbyPeerConfiguration(peerToken: token)
+        niSession.run(config)
+    }
+
 
     func startExperience() {
         guard !didStartExperience else { return }
@@ -1238,17 +1245,19 @@ class ProximityManager: NSObject, ObservableObject {
     private func updateProximityHaptics(with distance: Float, from peer: MCPeerID) {
         guard distance > 0, distance < 0.3 else { return }
         guard let mcSession, mcSession.connectedPeers.contains(peer) else { return }
-        guard peerSuccessCounts[peer, default: 0] >= 3 else { return }
+        // Require at least 8 successful UWB updates before haptics (avoid phantom vibrations)
+        guard peerSuccessCounts[peer, default: 0] >= 8 else { return }
 
         let now = Date()
         let normalized = max(0, min(1, (0.3 - distance) / 0.3))
-        let minimumInterval = 0.55 - (Double(normalized) * 0.32)
+        // Minimum 0.8s between haptics to avoid buzzing
+        let minimumInterval = max(0.8, 1.2 - (Double(normalized) * 0.4))
         guard now.timeIntervalSince(lastProximityPulseDate) >= minimumInterval else { return }
 
         lastProximityPulseDate = now
 
         DispatchQueue.main.async {
-            self.proximityFeedback.impactOccurred(intensity: CGFloat(0.25 + normalized * 0.55))
+            self.proximityFeedback.impactOccurred(intensity: CGFloat(0.2 + normalized * 0.4))
             self.proximityFeedback.prepare()
         }
     }
@@ -1378,8 +1387,9 @@ class ProximityManager: NSObject, ObservableObject {
         startMotionUpdates()
         updateDebugSnapshot()
 
+        // Clear reconnecting banner after 3s regardless
         Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
             if self.transientStatusText == "Reconnecting..." {
                 withAnimation(.easeOut(duration: 0.25)) {
                     self.transientStatusText = nil
@@ -1464,8 +1474,7 @@ extension ProximityManager: NISessionDelegate {
             print("NI Session resumed")
             self.debugSnapshot.uwbState = "resumed"
             for token in self.peerTokens.values {
-                let config = NINearbyPeerConfiguration(peerToken: token)
-                session.run(config)
+                self.safeRunNI(with: token)
             }
             self.updateDebugSnapshot()
         }
@@ -1536,8 +1545,7 @@ extension ProximityManager: MCSessionDelegate {
                        let token = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: tokenData) {
                         self.peerTokens[peerID] = token
                         self.peerRangeUpdateDates[peerID] = .distantPast
-                        let config = NINearbyPeerConfiguration(peerToken: token)
-                        self.niSession?.run(config)
+                        self.safeRunNI(with: token)
                         self.shareSessionMetadata(with: peerID)
                         self.shareDiscoveryToken(with: peerID)
                         self.broadcastGrainfieldRole()
@@ -1567,8 +1575,7 @@ extension ProximityManager: MCSessionDelegate {
                 DispatchQueue.main.async {
                     self.peerTokens[peerID] = token
                     self.peerRangeUpdateDates[peerID] = .distantPast
-                    let config = NINearbyPeerConfiguration(peerToken: token)
-                    self.niSession?.run(config)
+                    self.safeRunNI(with: token)
                     self.shareSessionMetadata(with: peerID)
                     self.shareDiscoveryToken(with: peerID)
                     self.broadcastGrainfieldRole()
