@@ -26,14 +26,7 @@ struct ContentView: View {
                     // Mode toggle: Nearfield ↔ Grainfield
                     Button {
                         withAnimation(.easeInOut(duration: 0.25)) {
-                            if proximityManager.isGrainfieldActive {
-                                // Turn off grainfield entirely
-                                proximityManager.setGrainfieldEnabled(false)
-                            } else {
-                                // Enter grainfield as listener by default
-                                proximityManager.isGrainfieldListening = true
-                                proximityManager.objectWillChange.send()
-                            }
+                            proximityManager.toggleGrainfieldMode()
                         }
                     } label: {
                         HStack(spacing: 6) {
@@ -66,9 +59,7 @@ struct ContentView: View {
                         HStack(spacing: 0) {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    proximityManager.setGrainfieldEnabled(false)
-                                    proximityManager.isGrainfieldListening = true
-                                    proximityManager.objectWillChange.send()
+                                    proximityManager.enterGrainfieldAsListener()
                                 }
                             } label: {
                                 Text("Listen")
@@ -87,7 +78,7 @@ struct ContentView: View {
 
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    proximityManager.setGrainfieldEnabled(true)
+                                    proximityManager.enterGrainfieldAsPrimary()
                                 }
                             } label: {
                                 HStack(spacing: 4) {
@@ -734,19 +725,49 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     func toggleGrainfieldMode() {
-        setGrainfieldEnabled(!isGrainfieldEnabled)
+        if isGrainfieldActive {
+            exitGrainfield()
+        } else {
+            enterGrainfieldAsListener()
+        }
+    }
+
+    func enterGrainfieldAsListener() {
+        if isGrainfieldEnabled {
+            stopGrainfieldCapture()
+            isGrainfieldEnabled = false
+        }
+        isGrainfieldListening = true
+        updateDebugSnapshot()
+    }
+
+    func enterGrainfieldAsPrimary() {
+        isGrainfieldListening = false
+        guard !isGrainfieldEnabled else { return }
+        isGrainfieldEnabled = true
+        requestMicrophoneAccessAndStartCapture()
+        updateDebugSnapshot()
+    }
+
+    func exitGrainfield() {
+        if isGrainfieldEnabled {
+            stopGrainfieldCapture()
+            isGrainfieldEnabled = false
+        }
+        isGrainfieldListening = false
+        updateDebugSnapshot()
     }
 
     func setGrainfieldEnabled(_ enabled: Bool) {
-        guard enabled != isGrainfieldEnabled else { return }
-        isGrainfieldEnabled = enabled
         if enabled {
-            isGrainfieldListening = false
-            requestMicrophoneAccessAndStartCapture()
+            enterGrainfieldAsPrimary()
         } else {
-            stopGrainfieldCapture()
+            if isGrainfieldEnabled {
+                stopGrainfieldCapture()
+                isGrainfieldEnabled = false
+                updateDebugSnapshot()
+            }
         }
-        updateDebugSnapshot()
     }
 
     private func prepareHaptics() {
