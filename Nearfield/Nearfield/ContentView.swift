@@ -811,7 +811,7 @@ class ProximityManager: NSObject, ObservableObject {
         updateDebugSnapshot()
 
         // Periodically restart browsing to catch peers that were missed
-        connectivityRetryTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: true) { [weak self] _ in
+        connectivityRetryTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
             self?.restartBrowsingIfNeeded()
         }
     }
@@ -1485,22 +1485,15 @@ extension ProximityManager: MCNearbyServiceBrowserDelegate {
         triggerDiscoveryHaptic()
         guard let mcSession else { return }
 
-        // Don't invite if already connected or connecting
-        let alreadyConnected = mcSession.connectedPeers.contains(peerID)
-        guard !alreadyConnected else {
-            print("Already connected to \(peerID.displayName), skipping invite")
+        // Don't invite if already connected
+        guard !mcSession.connectedPeers.contains(peerID) else {
+            print("Already connected to \(peerID.displayName), skipping")
             return
         }
 
-        // Use display name comparison to break tie — lower name invites, higher accepts
-        // This prevents both devices from sending invites simultaneously
-        let shouldInvite = self.peerID.displayName < peerID.displayName
-        if shouldInvite {
-            print("Inviting \(peerID.displayName)")
-            browser.invitePeer(peerID, to: mcSession, withContext: nil, timeout: 15)
-        } else {
-            print("Waiting for invite from \(peerID.displayName)")
-        }
+        // Both sides invite — MC handles duplicate connections gracefully
+        print("Inviting \(peerID.displayName)")
+        browser.invitePeer(peerID, to: mcSession, withContext: nil, timeout: 30)
     }
 
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
