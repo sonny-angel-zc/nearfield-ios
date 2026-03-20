@@ -2408,11 +2408,14 @@
                 distEl.textContent = '--';
                 distEl.classList.add('no-peer');
                 peerEl.textContent = '0';
+                const dbg = nativeData.debug || {};
+                const connState = dbg.connectivityState || 'unknown';
+                const uwbState = dbg.uwbState || 'unknown';
                 statusBar.textContent = active
                     ? (isGrainfieldPrimaryRole()
-                        ? 'Streaming local mic • waiting for listeners'
-                        : 'Waiting for Grainfield source...') 
-                    : 'Searching for nearby devices...';
+                        ? `Streaming mic • MC:${connState} UWB:${uwbState}`
+                        : `Waiting for source • MC:${connState} UWB:${uwbState}`) 
+                    : `Searching • MC:${connState} UWB:${uwbState}`;
             } else {
                 distEl.classList.remove('no-peer');
                 if (nativeData.nearestDistance < 1) {
