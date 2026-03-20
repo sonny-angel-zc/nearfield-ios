@@ -666,6 +666,7 @@ class ProximityManager: NSObject, ObservableObject {
     private var didStartMotion = false
     private var didStartConnectivity = false
     private var didStartExperience = false
+    private var lastConnectionPulseDate = Date.distantPast
     private var lastProximityPulseDate = Date.distantPast
     private var needsReconnect = false
     private var grainfieldChunkDuration: TimeInterval = 2.0
@@ -1216,7 +1217,11 @@ class ProximityManager: NSObject, ObservableObject {
         }
     }
 
-    private func triggerDiscoveryHaptic() {
+    private func triggerConnectionHaptic() {
+        let now = Date()
+        guard now.timeIntervalSince(lastConnectionPulseDate) >= 1.5 else { return }
+        lastConnectionPulseDate = now
+
         DispatchQueue.main.async {
             self.discoveryFeedback.impactOccurred(intensity: 0.55)
             self.discoveryFeedback.prepare()
@@ -1230,8 +1235,10 @@ class ProximityManager: NSObject, ObservableObject {
         }
     }
 
-    private func updateProximityHaptics(with distance: Float) {
+    private func updateProximityHaptics(with distance: Float, from peer: MCPeerID) {
         guard distance > 0, distance < 0.3 else { return }
+        guard let mcSession, mcSession.connectedPeers.contains(peer) else { return }
+        guard peerSuccessCounts[peer, default: 0] >= 3 else { return }
 
         let now = Date()
         let normalized = max(0, min(1, (0.3 - distance) / 0.3))
@@ -1385,27 +1392,27 @@ class ProximityManager: NSObject, ObservableObject {
 // MARK: - NISessionDelegate
 extension ProximityManager: NISessionDelegate {
     func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
-        debugSnapshot.uwbState = "ranging"
-        var seenPeers = Set<MCPeerID>()
+        DispatchQueue.main.async {
+            self.debugSnapshot.uwbState = "ranging"
+            var seenPeers = Set<MCPeerID>()
 
-        for object in nearbyObjects {
-            for (peer, token) in peerTokens {
-                if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
-                   let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
-                   tokenData == objectTokenData {
-                    seenPeers.insert(peer)
-                    peerSuccessCounts[peer, default: 0] += 1
-                    peerRangeUpdateDates[peer] = Date()
+            for object in nearbyObjects {
+                for (peer, token) in self.peerTokens {
+                    if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
+                       let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
+                       tokenData == objectTokenData {
+                        seenPeers.insert(peer)
+                        self.peerSuccessCounts[peer, default: 0] += 1
+                        self.peerRangeUpdateDates[peer] = Date()
 
-                    let distance = object.distance ?? -1
-                    let direction = object.direction ?? simd_float3(0, 0, 0)
+                        let distance = object.distance ?? -1
+                        let direction = object.direction ?? simd_float3(0, 0, 0)
 
-                    var horizontalAngle: Float = 0
-                    if #available(iOS 16.0, *) {
-                        horizontalAngle = object.horizontalAngle ?? 0
-                    }
+                        var horizontalAngle: Float = 0
+                        if #available(iOS 16.0, *) {
+                            horizontalAngle = object.horizontalAngle ?? 0
+                        }
 
-                    DispatchQueue.main.async {
                         self.peersData[self.resolvedDisplayName(for: peer)] = PeerData(
                             distance: distance,
                             directionX: direction.x,
@@ -1414,73 +1421,80 @@ extension ProximityManager: NISessionDelegate {
                             horizontalAngle: horizontalAngle
                         )
                         self.updateNearestDistance()
-                        self.updateProximityHaptics(with: distance)
+                        self.updateProximityHaptics(with: distance, from: peer)
+                        break
                     }
-                    break
                 }
             }
-        }
 
-        for peer in peerTokens.keys where !seenPeers.contains(peer) {
-            peerMissCounts[peer, default: 0] += 1
-        }
+            for peer in self.peerTokens.keys where !seenPeers.contains(peer) {
+                self.peerMissCounts[peer, default: 0] += 1
+            }
 
-        updateDebugSnapshot()
+            self.updateDebugSnapshot()
+        }
     }
 
     func session(_ session: NISession, didRemove nearbyObjects: [NINearbyObject], reason: NINearbyObject.RemovalReason) {
-        for object in nearbyObjects {
-            for (peer, token) in peerTokens {
-                if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
-                   let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
-                   tokenData == objectTokenData {
-                    DispatchQueue.main.async {
+        DispatchQueue.main.async {
+            for object in nearbyObjects {
+                for (peer, token) in self.peerTokens {
+                    if let tokenData = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true),
+                       let objectTokenData = try? NSKeyedArchiver.archivedData(withRootObject: object.discoveryToken, requiringSecureCoding: true),
+                       tokenData == objectTokenData {
                         self.peersData.removeValue(forKey: self.resolvedDisplayName(for: peer))
                         self.updateNearestDistance()
+                        break
                     }
-                    break
                 }
             }
         }
     }
 
     func sessionWasSuspended(_ session: NISession) {
-        print("NI Session suspended")
-        debugSnapshot.uwbState = "suspended"
-        updateDebugSnapshot()
+        DispatchQueue.main.async {
+            print("NI Session suspended")
+            self.debugSnapshot.uwbState = "suspended"
+            self.updateDebugSnapshot()
+        }
     }
 
     func sessionSuspensionEnded(_ session: NISession) {
-        print("NI Session resumed")
-        debugSnapshot.uwbState = "resumed"
-        for token in peerTokens.values {
-            let config = NINearbyPeerConfiguration(peerToken: token)
-            session.run(config)
+        DispatchQueue.main.async {
+            print("NI Session resumed")
+            self.debugSnapshot.uwbState = "resumed"
+            for token in self.peerTokens.values {
+                let config = NINearbyPeerConfiguration(peerToken: token)
+                session.run(config)
+            }
+            self.updateDebugSnapshot()
         }
-        updateDebugSnapshot()
     }
 
     func session(_ session: NISession, didInvalidateWith error: Error) {
-        print("NI Session invalidated: \(error)")
-        debugSnapshot.uwbState = "invalidated"
-        updateDebugSnapshot()
+        DispatchQueue.main.async {
+            print("NI Session invalidated: \(error)")
+            self.debugSnapshot.uwbState = "invalidated"
+            self.updateDebugSnapshot()
+        }
     }
 }
 
 // MARK: - MCSessionDelegate
 extension ProximityManager: MCSessionDelegate {
     func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
-        switch state {
-        case .connected:
-            print("Connected to \(peerID.displayName)")
-            shareSessionMetadata(with: peerID)
-            shareDiscoveryToken(with: peerID)
-            broadcastGrainfieldRole()
-            updateDebugSnapshot()
-        case .notConnected:
-            print("Disconnected from \(peerID.displayName)")
-            triggerDisconnectHaptic()
-            DispatchQueue.main.async {
+        DispatchQueue.main.async {
+            switch state {
+            case .connected:
+                print("Connected to \(peerID.displayName)")
+                self.triggerConnectionHaptic()
+                self.shareSessionMetadata(with: peerID)
+                self.shareDiscoveryToken(with: peerID)
+                self.broadcastGrainfieldRole()
+                self.updateDebugSnapshot()
+            case .notConnected:
+                print("Disconnected from \(peerID.displayName)")
+                self.triggerDisconnectHaptic()
                 let peerName = self.resolvedDisplayName(for: peerID)
                 self.peersData.removeValue(forKey: peerName)
                 self.peerTokens.removeValue(forKey: peerID)
@@ -1496,68 +1510,72 @@ extension ProximityManager: MCSessionDelegate {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.restartBrowsingIfNeeded()
                 }
+            case .connecting:
+                print("Connecting to \(peerID.displayName)")
+                self.updateDebugSnapshot()
+            @unknown default:
+                break
             }
-        case .connecting:
-            print("Connecting to \(peerID.displayName)")
-            updateDebugSnapshot()
-        @unknown default:
-            break
         }
     }
 
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
-        do {
-            if let payload = try? JSONDecoder().decode(SessionPayload.self, from: data) {
+        if let payload = try? JSONDecoder().decode(SessionPayload.self, from: data) {
+            DispatchQueue.main.async {
                 if let remoteRole = payload.grainfieldRole {
-                    peerGrainfieldRoles[peerID] = remoteRole
+                    self.peerGrainfieldRoles[peerID] = remoteRole
                 }
 
                 switch payload.kind {
                 case "metadata":
                     if let displayName = payload.displayName {
-                        registerDisplayName(displayName, for: peerID)
+                        self.registerDisplayName(displayName, for: peerID)
                     }
                 case "token":
                     if let tokenData = payload.tokenData,
-                       let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: tokenData) {
-                        peerTokens[peerID] = token
-                        peerRangeUpdateDates[peerID] = .distantPast
+                       let token = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: tokenData) {
+                        self.peerTokens[peerID] = token
+                        self.peerRangeUpdateDates[peerID] = .distantPast
                         let config = NINearbyPeerConfiguration(peerToken: token)
-                        niSession?.run(config)
-                        shareSessionMetadata(with: peerID)
-                        shareDiscoveryToken(with: peerID)
-                        broadcastGrainfieldRole()
-                        debugSnapshot.uwbState = "token exchanged"
-                        updateDebugSnapshot()
+                        self.niSession?.run(config)
+                        self.shareSessionMetadata(with: peerID)
+                        self.shareDiscoveryToken(with: peerID)
+                        self.broadcastGrainfieldRole()
+                        self.debugSnapshot.uwbState = "token exchanged"
+                        self.updateDebugSnapshot()
                         print("Configured NI with \(peerID.displayName)")
                     }
                 case "grainfieldRole":
-                    if payload.grainfieldRole == .primary, isGrainfieldPrimary {
-                        transientStatusText = "\(resolvedDisplayName(for: peerID)) also claimed primary"
+                    if payload.grainfieldRole == .primary, self.isGrainfieldPrimary {
+                        self.transientStatusText = "\(self.resolvedDisplayName(for: peerID)) also claimed primary"
                     }
-                    updateDebugSnapshot()
+                    self.updateDebugSnapshot()
                 case "audioBuffer":
                     if let audioBuffer = payload.audioBuffer,
-                       payload.grainfieldRole == .primary || peerGrainfieldRoles[peerID] == .primary {
-                        handleIncomingAudioBuffer(audioBuffer, from: peerID)
+                       payload.grainfieldRole == .primary || self.peerGrainfieldRoles[peerID] == .primary {
+                        self.handleIncomingAudioBuffer(audioBuffer, from: peerID)
                     }
                 default:
                     break
                 }
-                return
             }
+            return
+        }
 
+        do {
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
-                peerTokens[peerID] = token
-                peerRangeUpdateDates[peerID] = .distantPast
-                let config = NINearbyPeerConfiguration(peerToken: token)
-                niSession?.run(config)
-                shareSessionMetadata(with: peerID)
-                shareDiscoveryToken(with: peerID)
-                broadcastGrainfieldRole()
-                debugSnapshot.uwbState = "token exchanged"
-                updateDebugSnapshot()
-                print("Configured NI with \(peerID.displayName)")
+                DispatchQueue.main.async {
+                    self.peerTokens[peerID] = token
+                    self.peerRangeUpdateDates[peerID] = .distantPast
+                    let config = NINearbyPeerConfiguration(peerToken: token)
+                    self.niSession?.run(config)
+                    self.shareSessionMetadata(with: peerID)
+                    self.shareDiscoveryToken(with: peerID)
+                    self.broadcastGrainfieldRole()
+                    self.debugSnapshot.uwbState = "token exchanged"
+                    self.updateDebugSnapshot()
+                    print("Configured NI with \(peerID.displayName)")
+                }
             }
         } catch {
             print("Failed to decode discovery token: \(error)")
@@ -1580,7 +1598,6 @@ extension ProximityManager: MCNearbyServiceAdvertiserDelegate {
 extension ProximityManager: MCNearbyServiceBrowserDelegate {
     func browser(_ browser: MCNearbyServiceBrowser, foundPeer peerID: MCPeerID, withDiscoveryInfo info: [String : String]?) {
         print("Found peer: \(peerID.displayName)")
-        triggerDiscoveryHaptic()
         guard let mcSession else { return }
 
         // Don't invite if already connected
