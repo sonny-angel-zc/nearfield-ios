@@ -790,14 +790,31 @@ class ProximityManager: NSObject, ObservableObject {
         updateDebugSnapshot()
     }
 
+    private var connectivityRetryTimer: Timer?
+
     func prepareLocalConnectivity() {
         if mcSession == nil {
-            let session = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
+            let session = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .none)
             session.delegate = self
             mcSession = session
         }
 
         guard !didStartConnectivity else { return }
+
+        startAdvertisingAndBrowsing()
+        didStartConnectivity = true
+        print("Connectivity started")
+        updateDebugSnapshot()
+
+        // Periodically restart browsing to catch peers that were missed
+        connectivityRetryTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: true) { [weak self] _ in
+            self?.restartBrowsingIfNeeded()
+        }
+    }
+
+    private func startAdvertisingAndBrowsing() {
+        mcAdvertiser?.stopAdvertisingPeer()
+        mcBrowser?.stopBrowsingForPeers()
 
         let advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: serviceType)
         advertiser.delegate = self
@@ -808,10 +825,23 @@ class ProximityManager: NSObject, ObservableObject {
         browser.delegate = self
         browser.startBrowsingForPeers()
         mcBrowser = browser
+    }
 
-        didStartConnectivity = true
-        print("Connectivity started")
-        updateDebugSnapshot()
+    private func restartBrowsingIfNeeded() {
+        guard let mcSession, mcSession.connectedPeers.isEmpty else { return }
+        print("No peers connected — restarting browse")
+        mcBrowser?.stopBrowsingForPeers()
+        let browser = MCNearbyServiceBrowser(peer: peerID, serviceType: serviceType)
+        browser.delegate = self
+        browser.startBrowsingForPeers()
+        mcBrowser = browser
+
+        // Also restart advertising
+        mcAdvertiser?.stopAdvertisingPeer()
+        let advertiser = MCNearbyServiceAdvertiser(peer: peerID, discoveryInfo: nil, serviceType: serviceType)
+        advertiser.delegate = self
+        advertiser.startAdvertisingPeer()
+        mcAdvertiser = advertiser
     }
 
     func prepareBluetoothPermission() {
@@ -857,6 +887,8 @@ class ProximityManager: NSObject, ObservableObject {
     func stop() {
         motionManager.stopDeviceMotionUpdates()
         stopGrainfieldCapture()
+        connectivityRetryTimer?.invalidate()
+        connectivityRetryTimer = nil
         niSession?.invalidate()
         mcAdvertiser?.stopAdvertisingPeer()
         mcBrowser?.stopBrowsingForPeers()
@@ -1373,6 +1405,12 @@ extension ProximityManager: MCSessionDelegate {
                 self.peerSuccessCounts.removeValue(forKey: peerID)
                 self.peerMissCounts.removeValue(forKey: peerID)
                 self.updateNearestDistance()
+                self.updateDebugSnapshot()
+
+                // Restart browsing to re-discover dropped peer
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.restartBrowsingIfNeeded()
+                }
             }
         case .connecting:
             print("Connecting to \(peerID.displayName)")
@@ -1441,7 +1479,23 @@ extension ProximityManager: MCNearbyServiceBrowserDelegate {
         print("Found peer: \(peerID.displayName)")
         triggerDiscoveryHaptic()
         guard let mcSession else { return }
-        browser.invitePeer(peerID, to: mcSession, withContext: nil, timeout: 10)
+
+        // Don't invite if already connected or connecting
+        let alreadyConnected = mcSession.connectedPeers.contains(peerID)
+        guard !alreadyConnected else {
+            print("Already connected to \(peerID.displayName), skipping invite")
+            return
+        }
+
+        // Use display name comparison to break tie — lower name invites, higher accepts
+        // This prevents both devices from sending invites simultaneously
+        let shouldInvite = self.peerID.displayName < peerID.displayName
+        if shouldInvite {
+            print("Inviting \(peerID.displayName)")
+            browser.invitePeer(peerID, to: mcSession, withContext: nil, timeout: 15)
+        } else {
+            print("Waiting for invite from \(peerID.displayName)")
+        }
     }
 
     func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {
