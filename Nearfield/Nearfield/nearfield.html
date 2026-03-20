@@ -2264,26 +2264,50 @@
             phoneOscTriangle.start();
         }
 
+        let currentAudioMode = 'none'; // 'none' | 'harmonic' | 'listening' | 'primary'
+
         function syncAudioMode() {
             if (!audioCtx || !masterGain || !granularEngine) return;
 
-            if (!isPlaying) {
-                granularEngine.stop();
-                stopHarmonicVoice();
-                return;
+            let targetMode = 'none';
+            if (isPlaying) {
+                if (isGrainfieldListeningRole()) {
+                    targetMode = 'listening';
+                } else if (isGrainfieldPrimaryRole()) {
+                    targetMode = 'primary';
+                } else {
+                    targetMode = 'harmonic';
+                }
             }
 
-            if (isGrainfieldListeningRole()) {
+            // Only switch when mode actually changes
+            if (targetMode === currentAudioMode) return;
+
+            const prevMode = currentAudioMode;
+            currentAudioMode = targetMode;
+
+            // Tear down previous mode
+            if (prevMode === 'harmonic') {
                 stopHarmonicVoice();
-                granularEngine.start();
-                granularEngine.updateParameters(nativeData);
-            } else if (isGrainfieldPrimaryRole()) {
+            } else if (prevMode === 'listening') {
                 granularEngine.stop();
-                stopHarmonicVoice();
-            } else {
-                granularEngine.stop();
+            } else if (prevMode === 'primary') {
+                // nothing to stop on primary (no playback)
+            }
+
+            // Start new mode
+            if (targetMode === 'harmonic') {
                 startHarmonicVoice();
                 updateHarmonics();
+            } else if (targetMode === 'listening') {
+                granularEngine.start();
+                granularEngine.updateParameters(nativeData);
+            } else if (targetMode === 'primary') {
+                // Primary doesn't play audio, just streams
+            } else {
+                // 'none' — stop everything
+                granularEngine.stop();
+                stopHarmonicVoice();
             }
         }
 
@@ -2311,6 +2335,7 @@
             initAudio();
 
             if (isPlaying) {
+                currentAudioMode = 'none';
                 stopHarmonicVoice();
                 if (granularEngine) {
                     granularEngine.stop();
@@ -2320,6 +2345,7 @@
                 document.getElementById('detuneIndicator').textContent = '';
             } else {
                 isPlaying = true;
+                currentAudioMode = 'none'; // force re-evaluation
                 syncAudioMode();
             }
             updatePlayButtonLabel();
