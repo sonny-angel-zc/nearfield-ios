@@ -59,10 +59,10 @@ struct ContentView: View {
                         HStack(spacing: 0) {
                             Button {
                                 withAnimation(.easeInOut(duration: 0.2)) {
-                                    proximityManager.enterGrainfieldAsListener()
+                                    proximityManager.enterGrainfieldAsSecondary()
                                 }
                             } label: {
-                                Text("Listen")
+                                Text("Secondary")
                                     .font(.system(size: 11, weight: .semibold, design: .monospaced))
                                     .foregroundStyle(!proximityManager.isGrainfieldPrimary ? .white : .white.opacity(0.4))
                                     .padding(.horizontal, 10)
@@ -524,11 +524,18 @@ private struct AudioBufferPayload: Codable {
     var sentAt: Double
 }
 
+private enum GrainfieldRole: String, Codable {
+    case inactive
+    case secondary
+    case primary
+}
+
 private struct SessionPayload: Codable {
     var kind: String
     var displayName: String?
     var tokenData: Data?
     var audioBuffer: AudioBufferPayload?
+    var grainfieldRole: GrainfieldRole?
 }
 
 private struct GrainfieldBridgePayload: Codable {
@@ -631,7 +638,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var debugSnapshot: DebugSnapshot = .empty
     @Published var transientStatusText: String?
     @Published var isGrainfieldEnabled: Bool = false
-    @Published var isGrainfieldListening: Bool = false
+    @Published var isGrainfieldSecondary: Bool = false
 
     private var niSession: NISession?
     private var mcSession: MCSession?
@@ -664,25 +671,29 @@ class ProximityManager: NSObject, ObservableObject {
     private let grainfieldSampleRate: Double = 44_100
     private var grainfieldAccumulatedSamples: [Float] = []
     private var lastGrainfieldBufferDate: Date?
-    private var manualListenerMode = false
+    private var peerGrainfieldRoles: [MCPeerID: GrainfieldRole] = [:]
 
     var isGrainfieldPrimary: Bool {
         isGrainfieldEnabled
     }
 
+    var isGrainfieldSecondaryActive: Bool {
+        isGrainfieldSecondary && !isGrainfieldPrimary
+    }
+
     var isGrainfieldActive: Bool {
-        isGrainfieldEnabled || isGrainfieldListening
+        isGrainfieldPrimary || isGrainfieldSecondaryActive
     }
 
     var grainfieldRoleIdentifier: String {
         if isGrainfieldPrimary { return "primary" }
-        if isGrainfieldListening { return "listening" }
+        if isGrainfieldSecondaryActive { return "secondary" }
         return "inactive"
     }
 
     var grainfieldStatusLabel: String {
         if isGrainfieldPrimary { return "Grainfield (Streaming)" }
-        if isGrainfieldListening { return "Grainfield (Listening)" }
+        if isGrainfieldSecondaryActive { return "Grainfield (Secondary)" }
         return "Nearfield"
     }
 
@@ -729,25 +740,36 @@ class ProximityManager: NSObject, ObservableObject {
         if isGrainfieldActive {
             exitGrainfield()
         } else {
-            enterGrainfieldAsListener()
+            enterGrainfieldAsSecondary()
         }
     }
 
     func enterGrainfieldAsListener() {
+        enterGrainfieldAsSecondary()
+    }
+
+    func enterGrainfieldAsSecondary() {
         if isGrainfieldEnabled {
             stopGrainfieldCapture()
             isGrainfieldEnabled = false
         }
-        manualListenerMode = true
-        isGrainfieldListening = true
+        isGrainfieldSecondary = true
+        broadcastGrainfieldRole()
         updateDebugSnapshot()
     }
 
     func enterGrainfieldAsPrimary() {
-        isGrainfieldListening = false
+        if let existingPrimary = currentRemotePrimaryPeer() {
+            transientStatusText = "\(resolvedDisplayName(for: existingPrimary)) is already primary"
+            updateDebugSnapshot()
+            return
+        }
+
+        isGrainfieldSecondary = false
         guard !isGrainfieldEnabled else { return }
         isGrainfieldEnabled = true
         requestMicrophoneAccessAndStartCapture()
+        broadcastGrainfieldRole()
         updateDebugSnapshot()
     }
 
@@ -756,9 +778,9 @@ class ProximityManager: NSObject, ObservableObject {
             stopGrainfieldCapture()
             isGrainfieldEnabled = false
         }
-        manualListenerMode = false
-        isGrainfieldListening = false
+        isGrainfieldSecondary = false
         lastGrainfieldBufferDate = nil
+        broadcastGrainfieldRole()
         updateDebugSnapshot()
     }
 
@@ -769,6 +791,7 @@ class ProximityManager: NSObject, ObservableObject {
             if isGrainfieldEnabled {
                 stopGrainfieldCapture()
                 isGrainfieldEnabled = false
+                broadcastGrainfieldRole()
                 updateDebugSnapshot()
             }
         }
@@ -910,7 +933,7 @@ class ProximityManager: NSObject, ObservableObject {
 
         do {
             let tokenData = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
-            let payload = SessionPayload(kind: "token", displayName: nil, tokenData: tokenData, audioBuffer: nil)
+            let payload = SessionPayload(kind: "token", displayName: nil, tokenData: tokenData, audioBuffer: nil, grainfieldRole: localGrainfieldRole)
             let data = try JSONEncoder().encode(payload)
             try mcSession?.send(data, toPeers: [peer], with: .reliable)
             print("Sent discovery token to \(peer.displayName)")
@@ -921,12 +944,44 @@ class ProximityManager: NSObject, ObservableObject {
 
     private func shareSessionMetadata(with peer: MCPeerID) {
         do {
-            let payload = SessionPayload(kind: "metadata", displayName: localDisplayName, tokenData: nil, audioBuffer: nil)
+            let payload = SessionPayload(kind: "metadata", displayName: localDisplayName, tokenData: nil, audioBuffer: nil, grainfieldRole: localGrainfieldRole)
             let data = try JSONEncoder().encode(payload)
             try mcSession?.send(data, toPeers: [peer], with: .reliable)
             print("Sent display name to \(peer.displayName)")
         } catch {
             print("Failed to send display name: \(error)")
+        }
+    }
+
+    private var localGrainfieldRole: GrainfieldRole {
+        if isGrainfieldPrimary { return .primary }
+        if isGrainfieldSecondaryActive { return .secondary }
+        return .inactive
+    }
+
+    private func currentRemotePrimaryPeer(excluding peer: MCPeerID? = nil) -> MCPeerID? {
+        let excludedPeer = peer
+        return peerGrainfieldRoles.first { candidate, role in
+            role == .primary && candidate != self.peerID && candidate != excludedPeer
+        }?.key
+    }
+
+    private func broadcastGrainfieldRole() {
+        guard let mcSession, !mcSession.connectedPeers.isEmpty else { return }
+
+        let payload = SessionPayload(
+            kind: "grainfieldRole",
+            displayName: localDisplayName,
+            tokenData: nil,
+            audioBuffer: nil,
+            grainfieldRole: localGrainfieldRole
+        )
+
+        do {
+            let data = try JSONEncoder().encode(payload)
+            try mcSession.send(data, toPeers: mcSession.connectedPeers, with: .reliable)
+        } catch {
+            print("Failed to broadcast Grainfield role: \(error)")
         }
     }
 
@@ -984,6 +1039,7 @@ class ProximityManager: NSObject, ObservableObject {
                 print("Failed to configure AVAudioSession: \(error)")
                 DispatchQueue.main.async {
                     self.isGrainfieldEnabled = false
+                    self.broadcastGrainfieldRole()
                     self.updateDebugSnapshot()
                 }
                 return
@@ -1016,6 +1072,7 @@ class ProximityManager: NSObject, ObservableObject {
                 inputNode.removeTap(onBus: 0)
                 DispatchQueue.main.async {
                     self.isGrainfieldEnabled = false
+                    self.broadcastGrainfieldRole()
                     self.updateDebugSnapshot()
                 }
             }
@@ -1104,7 +1161,7 @@ class ProximityManager: NSObject, ObservableObject {
         )
 
         do {
-            let sessionPayload = SessionPayload(kind: "audioBuffer", displayName: localDisplayName, tokenData: nil, audioBuffer: payload)
+            let sessionPayload = SessionPayload(kind: "audioBuffer", displayName: localDisplayName, tokenData: nil, audioBuffer: payload, grainfieldRole: .primary)
             let encoded = try JSONEncoder().encode(sessionPayload)
             if let mcSession, !mcSession.connectedPeers.isEmpty {
                 try mcSession.send(encoded, toPeers: mcSession.connectedPeers, with: .unreliable)
@@ -1188,7 +1245,7 @@ class ProximityManager: NSObject, ObservableObject {
         debugSnapshot = DebugSnapshot(
             uwbState: debugSnapshot.uwbState,
             connectivityState: connectivitySummary,
-            grainfieldMode: isGrainfieldPrimary ? "Grainfield streaming" : (isGrainfieldListening ? "Grainfield listening" : "Nearfield fallback"),
+            grainfieldMode: isGrainfieldPrimary ? "Grainfield primary" : (isGrainfieldSecondaryActive ? "Grainfield secondary" : "Nearfield fallback"),
             grainfieldBufferAge: grainfieldBufferAge,
             grainfieldRate: grainRate,
             peers: peerDebug
@@ -1196,25 +1253,18 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     private func expireStaleGrainfieldListenerIfNeeded() {
-        // Don't expire if user manually entered listener mode
-        guard isGrainfieldListening, !isGrainfieldPrimary, !manualListenerMode else { return }
-        guard let lastGrainfieldBufferDate else {
-            isGrainfieldListening = false
-            updateDebugSnapshot()
-            return
-        }
-
+        guard isGrainfieldSecondaryActive else { return }
+        guard let lastGrainfieldBufferDate else { return }
         guard Date().timeIntervalSince(lastGrainfieldBufferDate) > 5 else { return }
-        isGrainfieldListening = false
         updateDebugSnapshot()
     }
 
     private func handleIncomingAudioBuffer(_ audioBuffer: AudioBufferPayload, from peer: MCPeerID) {
+        guard isGrainfieldSecondaryActive else { return }
+        guard peerGrainfieldRoles[peer, default: .inactive] == .primary else { return }
+
         DispatchQueue.main.async {
             self.lastGrainfieldBufferDate = Date()
-            if !self.isGrainfieldPrimary {
-                self.isGrainfieldListening = true
-            }
             self.updateDebugSnapshot()
             self.pushAudioBufferToWebView(audioBuffer, from: peer)
         }
@@ -1279,10 +1329,11 @@ class ProximityManager: NSObject, ObservableObject {
 
         needsReconnect = false
         peerTokens.removeAll()
+        peerGrainfieldRoles.removeAll()
         peerSuccessCounts.removeAll()
         peerMissCounts.removeAll()
         peersData.removeAll()
-        isGrainfieldListening = false
+        isGrainfieldSecondary = false
         lastGrainfieldBufferDate = nil
         updateNearestDistance()
 
@@ -1398,6 +1449,7 @@ extension ProximityManager: MCSessionDelegate {
             print("Connected to \(peerID.displayName)")
             shareSessionMetadata(with: peerID)
             shareDiscoveryToken(with: peerID)
+            broadcastGrainfieldRole()
             updateDebugSnapshot()
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
@@ -1406,6 +1458,7 @@ extension ProximityManager: MCSessionDelegate {
                 let peerName = self.resolvedDisplayName(for: peerID)
                 self.peersData.removeValue(forKey: peerName)
                 self.peerTokens.removeValue(forKey: peerID)
+                self.peerGrainfieldRoles.removeValue(forKey: peerID)
                 self.peerDisplayNames.removeValue(forKey: peerID)
                 self.peerSuccessCounts.removeValue(forKey: peerID)
                 self.peerMissCounts.removeValue(forKey: peerID)
@@ -1428,6 +1481,10 @@ extension ProximityManager: MCSessionDelegate {
     func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         do {
             if let payload = try? JSONDecoder().decode(SessionPayload.self, from: data) {
+                if let remoteRole = payload.grainfieldRole {
+                    peerGrainfieldRoles[peerID] = remoteRole
+                }
+
                 switch payload.kind {
                 case "metadata":
                     if let displayName = payload.displayName {
@@ -1443,8 +1500,14 @@ extension ProximityManager: MCSessionDelegate {
                         updateDebugSnapshot()
                         print("Configured NI with \(peerID.displayName)")
                     }
+                case "grainfieldRole":
+                    if payload.grainfieldRole == .primary, isGrainfieldPrimary {
+                        transientStatusText = "\(resolvedDisplayName(for: peerID)) also claimed primary"
+                    }
+                    updateDebugSnapshot()
                 case "audioBuffer":
-                    if let audioBuffer = payload.audioBuffer {
+                    if let audioBuffer = payload.audioBuffer,
+                       payload.grainfieldRole == .primary || peerGrainfieldRoles[peerID] == .primary {
                         handleIncomingAudioBuffer(audioBuffer, from: peerID)
                     }
                 default:
