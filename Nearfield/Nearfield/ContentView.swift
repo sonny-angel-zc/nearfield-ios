@@ -21,44 +21,110 @@ struct ContentView: View {
                     .ignoresSafeArea(edges: [.top, .horizontal])
                     .transition(.opacity)
 
-                // Grainfield mode toggle
-                VStack {
-                    HStack {
-                        Spacer()
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                proximityManager.toggleGrainfieldMode()
+                // Mode controls (top-right)
+                VStack(alignment: .trailing, spacing: 8) {
+                    // Mode toggle: Nearfield ↔ Grainfield
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            if proximityManager.isGrainfieldActive {
+                                // Turn off grainfield entirely
+                                proximityManager.setGrainfieldEnabled(false)
+                            } else {
+                                // Enter grainfield as listener by default
+                                proximityManager.isGrainfieldListening = true
+                                proximityManager.objectWillChange.send()
                             }
-                        } label: {
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(proximityManager.isGrainfieldActive
-                                          ? Color(red: 0.4, green: 0.85, blue: 0.55)
-                                          : Color.white.opacity(0.3))
-                                    .frame(width: 8, height: 8)
-                                Text(proximityManager.grainfieldStatusLabel)
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(.white.opacity(0.85))
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(
-                                Capsule()
-                                    .fill(Color.black.opacity(0.5))
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(proximityManager.isGrainfieldActive
-                                                    ? Color(red: 0.4, green: 0.85, blue: 0.55).opacity(0.4)
-                                                    : Color.white.opacity(0.1), lineWidth: 1)
-                                    )
-                            )
                         }
-                        .buttonStyle(.plain)
-                        .padding(.trailing, 16)
-                        .padding(.top, 12)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(proximityManager.isGrainfieldActive
+                                      ? Color(red: 0.4, green: 0.85, blue: 0.55)
+                                      : Color.white.opacity(0.3))
+                                .frame(width: 8, height: 8)
+                            Text(proximityManager.isGrainfieldActive ? "Grainfield" : "Nearfield")
+                                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(Color.black.opacity(0.5))
+                                .overlay(
+                                    Capsule()
+                                        .stroke(proximityManager.isGrainfieldActive
+                                                ? Color(red: 0.4, green: 0.85, blue: 0.55).opacity(0.4)
+                                                : Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
                     }
-                    Spacer()
+                    .buttonStyle(.plain)
+
+                    // Primary/Secondary switch (only visible in Grainfield mode)
+                    if proximityManager.isGrainfieldActive {
+                        HStack(spacing: 0) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    proximityManager.setGrainfieldEnabled(false)
+                                    proximityManager.isGrainfieldListening = true
+                                    proximityManager.objectWillChange.send()
+                                }
+                            } label: {
+                                Text("Listen")
+                                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(!proximityManager.isGrainfieldPrimary ? .white : .white.opacity(0.4))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(!proximityManager.isGrainfieldPrimary
+                                                  ? Color(red: 0.3, green: 0.55, blue: 0.9).opacity(0.5)
+                                                  : Color.clear)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    proximityManager.setGrainfieldEnabled(true)
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    if proximityManager.isGrainfieldPrimary {
+                                        Circle()
+                                            .fill(Color.red)
+                                            .frame(width: 6, height: 6)
+                                    }
+                                    Text("Primary")
+                                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                                        .foregroundStyle(proximityManager.isGrainfieldPrimary ? .white : .white.opacity(0.4))
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(proximityManager.isGrainfieldPrimary
+                                              ? Color.red.opacity(0.4)
+                                              : Color.clear)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color.black.opacity(0.5))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                )
+                        )
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+                    }
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .padding(.trailing, 16)
+                .padding(.top, 12)
             }
 
             if hasSeenOnboarding, let reconnectBanner = proximityManager.transientStatusText {
