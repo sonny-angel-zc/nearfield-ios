@@ -993,6 +993,15 @@ class ProximityManager: NSObject, ObservableObject {
             self.audioEngine.stop()
             self.audioConverter = nil
             self.grainfieldAccumulatedSamples.removeAll(keepingCapacity: false)
+
+            // Restore audio session to playback-only
+            let audioSession = AVAudioSession.sharedInstance()
+            do {
+                try audioSession.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                try audioSession.setActive(true, options: [])
+            } catch {
+                print("Failed to restore audio session: \(error)")
+            }
         }
     }
 
