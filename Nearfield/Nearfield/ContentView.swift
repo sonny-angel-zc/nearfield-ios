@@ -653,6 +653,7 @@ class ProximityManager: NSObject, ObservableObject {
     private var peerDisplayNames: [MCPeerID: String] = [:]
     private var peerSuccessCounts: [MCPeerID: Int] = [:]
     private var peerMissCounts: [MCPeerID: Int] = [:]
+    private var peerRangeUpdateDates: [MCPeerID: Date] = [:]
     private let motionManager = CMMotionManager()
     private let discoveryFeedback = UIImpactFeedbackGenerator(style: .light)
     private let proximityFeedback = UIImpactFeedbackGenerator(style: .soft)
@@ -833,9 +834,9 @@ class ProximityManager: NSObject, ObservableObject {
         print("Connectivity started")
         updateDebugSnapshot()
 
-        // Periodically restart browsing to catch peers that were missed
-        connectivityRetryTimer = Timer.scheduledTimer(withTimeInterval: 4.0, repeats: true) { [weak self] _ in
-            self?.restartBrowsingIfNeeded()
+        // Keep re-syncing token + metadata until peers are actually ranging.
+        connectivityRetryTimer = Timer.scheduledTimer(withTimeInterval: 2.5, repeats: true) { [weak self] _ in
+            self?.maintainPeerLinks()
         }
     }
 
@@ -869,6 +870,29 @@ class ProximityManager: NSObject, ObservableObject {
         advertiser.delegate = self
         advertiser.startAdvertisingPeer()
         mcAdvertiser = advertiser
+    }
+
+    private func maintainPeerLinks() {
+        guard let mcSession else { return }
+
+        if mcSession.connectedPeers.isEmpty {
+            restartBrowsingIfNeeded()
+            return
+        }
+
+        for peer in mcSession.connectedPeers {
+            shareSessionMetadata(with: peer)
+            shareDiscoveryToken(with: peer)
+
+            guard let token = peerTokens[peer] else { continue }
+            let lastRangeUpdate = peerRangeUpdateDates[peer] ?? .distantPast
+            guard Date().timeIntervalSince(lastRangeUpdate) > 2.5 else { continue }
+
+            let config = NINearbyPeerConfiguration(peerToken: token)
+            niSession?.run(config)
+        }
+
+        broadcastGrainfieldRole()
     }
 
     func prepareBluetoothPermission() {
@@ -1329,6 +1353,7 @@ class ProximityManager: NSObject, ObservableObject {
 
         needsReconnect = false
         peerTokens.removeAll()
+        peerRangeUpdateDates.removeAll()
         peerGrainfieldRoles.removeAll()
         peerSuccessCounts.removeAll()
         peerMissCounts.removeAll()
@@ -1370,6 +1395,7 @@ extension ProximityManager: NISessionDelegate {
                    tokenData == objectTokenData {
                     seenPeers.insert(peer)
                     peerSuccessCounts[peer, default: 0] += 1
+                    peerRangeUpdateDates[peer] = Date()
 
                     let distance = object.distance ?? -1
                     let direction = object.direction ?? simd_float3(0, 0, 0)
@@ -1458,6 +1484,7 @@ extension ProximityManager: MCSessionDelegate {
                 let peerName = self.resolvedDisplayName(for: peerID)
                 self.peersData.removeValue(forKey: peerName)
                 self.peerTokens.removeValue(forKey: peerID)
+                self.peerRangeUpdateDates.removeValue(forKey: peerID)
                 self.peerGrainfieldRoles.removeValue(forKey: peerID)
                 self.peerDisplayNames.removeValue(forKey: peerID)
                 self.peerSuccessCounts.removeValue(forKey: peerID)
@@ -1494,8 +1521,12 @@ extension ProximityManager: MCSessionDelegate {
                     if let tokenData = payload.tokenData,
                        let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: tokenData) {
                         peerTokens[peerID] = token
+                        peerRangeUpdateDates[peerID] = .distantPast
                         let config = NINearbyPeerConfiguration(peerToken: token)
                         niSession?.run(config)
+                        shareSessionMetadata(with: peerID)
+                        shareDiscoveryToken(with: peerID)
+                        broadcastGrainfieldRole()
                         debugSnapshot.uwbState = "token exchanged"
                         updateDebugSnapshot()
                         print("Configured NI with \(peerID.displayName)")
@@ -1518,8 +1549,12 @@ extension ProximityManager: MCSessionDelegate {
 
             if let token = try NSKeyedUnarchiver.unarchivedObject(ofClass: NIDiscoveryToken.self, from: data) {
                 peerTokens[peerID] = token
+                peerRangeUpdateDates[peerID] = .distantPast
                 let config = NINearbyPeerConfiguration(peerToken: token)
                 niSession?.run(config)
+                shareSessionMetadata(with: peerID)
+                shareDiscoveryToken(with: peerID)
+                broadcastGrainfieldRole()
                 debugSnapshot.uwbState = "token exchanged"
                 updateDebugSnapshot()
                 print("Configured NI with \(peerID.displayName)")
