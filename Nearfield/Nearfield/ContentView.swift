@@ -664,6 +664,7 @@ class ProximityManager: NSObject, ObservableObject {
     private let grainfieldSampleRate: Double = 44_100
     private var grainfieldAccumulatedSamples: [Float] = []
     private var lastGrainfieldBufferDate: Date?
+    private var manualListenerMode = false
 
     var isGrainfieldPrimary: Bool {
         isGrainfieldEnabled
@@ -737,6 +738,7 @@ class ProximityManager: NSObject, ObservableObject {
             stopGrainfieldCapture()
             isGrainfieldEnabled = false
         }
+        manualListenerMode = true
         isGrainfieldListening = true
         updateDebugSnapshot()
     }
@@ -754,7 +756,9 @@ class ProximityManager: NSObject, ObservableObject {
             stopGrainfieldCapture()
             isGrainfieldEnabled = false
         }
+        manualListenerMode = false
         isGrainfieldListening = false
+        lastGrainfieldBufferDate = nil
         updateDebugSnapshot()
     }
 
@@ -1192,7 +1196,8 @@ class ProximityManager: NSObject, ObservableObject {
     }
 
     private func expireStaleGrainfieldListenerIfNeeded() {
-        guard isGrainfieldListening, !isGrainfieldPrimary else { return }
+        // Don't expire if user manually entered listener mode
+        guard isGrainfieldListening, !isGrainfieldPrimary, !manualListenerMode else { return }
         guard let lastGrainfieldBufferDate else {
             isGrainfieldListening = false
             updateDebugSnapshot()
