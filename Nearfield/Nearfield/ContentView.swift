@@ -107,7 +107,7 @@ class ProximityManager: NSObject, ObservableObject {
     @Published var tiltX: Float = 0
     @Published var tiltY: Float = 0
 
-    private var niSession: NISession?
+    private var niSessions: [MCPeerID: NISession] = [:]  // One NI session per peer
     private var mcSession: MCSession?
     private var mcAdvertiser: MCNearbyServiceAdvertiser?
     private var mcBrowser: MCNearbyServiceBrowser?
@@ -134,8 +134,7 @@ class ProximityManager: NSObject, ObservableObject {
             return
         }
 
-        niSession = NISession()
-        niSession?.delegate = self
+        // NI sessions are created per-peer in didReceive data
 
         mcSession = MCSession(peer: peerID, securityIdentity: nil, encryptionPreference: .required)
         mcSession?.delegate = self
@@ -170,14 +169,22 @@ class ProximityManager: NSObject, ObservableObject {
 
     func stop() {
         motionManager.stopDeviceMotionUpdates()
-        niSession?.invalidate()
+        for (_, session) in niSessions {
+            session.invalidate()
+        }
+        niSessions.removeAll()
         mcAdvertiser?.stopAdvertisingPeer()
         mcBrowser?.stopBrowsingForPeers()
         mcSession?.disconnect()
     }
 
     private func shareDiscoveryToken(with peer: MCPeerID) {
-        guard let token = niSession?.discoveryToken else { return }
+        // Create a dedicated NI session for this peer
+        let session = NISession()
+        session.delegate = self
+        niSessions[peer] = session
+
+        guard let token = session.discoveryToken else { return }
 
         do {
             let data = try NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: true)
@@ -257,9 +264,13 @@ extension ProximityManager: NISessionDelegate {
 
     func sessionSuspensionEnded(_ session: NISession) {
         print("NI Session resumed")
-        for (_, token) in peerTokens {
-            let config = NINearbyPeerConfiguration(peerToken: token)
-            session.run(config)
+        // Find which peer this session belongs to and re-run its config
+        for (peer, niSession) in niSessions {
+            if niSession === session, let token = peerTokens[peer] {
+                let config = NINearbyPeerConfiguration(peerToken: token)
+                session.run(config)
+                break
+            }
         }
     }
 
@@ -277,6 +288,8 @@ extension ProximityManager: MCSessionDelegate {
             shareDiscoveryToken(with: peerID)
         case .notConnected:
             print("Disconnected from \(peerID.displayName)")
+            self.niSessions[peerID]?.invalidate()
+            self.niSessions.removeValue(forKey: peerID)
             DispatchQueue.main.async {
                 self.peersData.removeValue(forKey: peerID.displayName)
                 self.peerTokens.removeValue(forKey: peerID)
@@ -295,7 +308,7 @@ extension ProximityManager: MCSessionDelegate {
                 peerTokens[peerID] = token
 
                 let config = NINearbyPeerConfiguration(peerToken: token)
-                niSession?.run(config)
+                niSessions[peerID]?.run(config)
 
                 print("Configured NI with \(peerID.displayName)")
             }
